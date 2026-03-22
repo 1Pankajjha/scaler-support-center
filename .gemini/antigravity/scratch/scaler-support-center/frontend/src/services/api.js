@@ -1,9 +1,11 @@
 // API service for frontend to communicate with backend
 
-// For Railway, the backend URL will be available at /api
-// For local development, use localhost
+// For different deployment environments:
+// - Netlify: Use /api (will be redirected to Railway)
+// - Railway: Use relative URLs
+// - Local: Use localhost
 const API_BASE_URL = import.meta.env.PROD 
-  ? ''  // In production on Railway, use relative URLs
+  ? '/api'  // In production, use relative path (works for both Netlify and Railway)
   : (import.meta.env.VITE_API_URL || 'http://localhost:5001');
 
 // Helper function to handle API responses
