@@ -14,8 +14,10 @@ const getApiBaseUrl = () => {
   // Check if we're on Railway (production)
   if (window.location.hostname.includes('.up.railway.app')) {
     console.log('Detected Railway deployment');
-    // Use the current origin for API calls (same domain)
-    const backendUrl = window.location.origin;
+    // For Railway, we need to use the backend service URL
+    // This should be set as an environment variable VITE_API_URL
+    // Fallback to a different Railway service URL pattern
+    const backendUrl = import.meta.env.VITE_API_URL || `https://${window.location.hostname.replace('courteous-charm', 'scaler-support-backend')}`;
     console.log('Using backend URL:', backendUrl);
     return backendUrl;
   }

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>Testing API Configuration</h1>
+    <div id="result"></div>
+    <script type="module">
+        // Simulate the API config
+        const hostname = window.location.hostname;
+        console.log('Current hostname:', hostname);
+        
+        let API_BASE_URL;
+        if (hostname.includes('.up.railway.app')) {
+            API_BASE_URL = 'https://scaler-support-center-production.up.railway.app';
+            console.log('Using Railway backend URL:', API_BASE_URL);
+        } else {
+            API_BASE_URL = window.location.origin;
+            console.log('Using same origin:', API_BASE_URL);
+        }
+        
+        document.getElementById('result').innerHTML = `
+            <p>Hostname: ${hostname}</p>
+            <p>API Base URL: ${API_BASE_URL}</p>
+            <p>Testing API call to: ${API_BASE_URL}/api/popular-topics</p>
+        `;
+        
+        // Test the API call
+        fetch(`${API_BASE_URL}/api/popular-topics`)
+            .then(res => res.json())
+            .then(data => {
+                console.log('API Response:', data);
+                document.getElementById('result').innerHTML += `
+                    <p>API Response: ${data.length} topics found</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            })
+            .catch(err => {
+                console.error('API Error:', err);
+                document.getElementById('result').innerHTML += `
+                    <p style="color: red;">API Error: ${err.message}</p>
+                `;
+            });
+    </script>
+</body>
+</html>

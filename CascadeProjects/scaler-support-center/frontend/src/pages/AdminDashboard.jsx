@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, FileText, Settings, LogOut, Search, Plus, Edit2, Trash2, Eye, RefreshCw, TrendingUp, Bell, User } from 'lucide-react';
 import '../styles/AdminDashboard.css';
-
-const API_URL = (import.meta.env.VITE_API_URL || window.location.origin) + '/api';
+import getApiBaseUrl from '../utils/apiConfig';
 
 const AdminDashboard = () => {
+  // Get API URL inside component to ensure window.location is available
+  const API_URL = useMemo(() => getApiBaseUrl() + '/api', []);
+  
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('faqs');
   
@@ -37,6 +39,7 @@ const AdminDashboard = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSavingTopic, setIsSavingTopic] = useState(false);
   const [topicSaveError, setTopicSaveError] = useState(null);
+  const [topicSaveSuccess, setTopicSaveSuccess] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
@@ -49,23 +52,57 @@ const AdminDashboard = () => {
   }, [navigate]);
 
   const fetchPopularTopics = async () => {
+    console.log('=== ADMIN DASHBOARD: fetchPopularTopics ===');
+    console.log('API_URL:', API_URL);
+    console.log('Full URL:', `${API_URL}/popular-topics`);
+    
     try {
       const res = await fetch(`${API_URL}/popular-topics`);
+      console.log('Response status:', res.status);
+      console.log('Response ok:', res.ok);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Response error text:', errorText);
+        throw new Error(`HTTP ${res.status}: ${res.statusText} - ${errorText}`);
+      }
+      
       const data = await res.json();
+      console.log('Popular topics data received:', data);
       setPopularTopics(data);
       setOriginalTopics(JSON.parse(JSON.stringify(data))); // Deep copy
     } catch (e) {
-      console.error('Failed to fetch popular topics');
+      console.error('=== FAILED TO FETCH POPULAR TOPICS ===');
+      console.error('Error:', e);
+      console.error('Error message:', e.message);
+      console.error('Stack trace:', e.stack);
     }
   };
 
   const fetchArticles = async () => {
+    console.log('=== ADMIN DASHBOARD: fetchArticles ===');
+    console.log('API_URL:', API_URL);
+    console.log('Full URL:', `${API_URL}/articles`);
+    
     try {
       const res = await fetch(`${API_URL}/articles`);
+      console.log('Response status:', res.status);
+      console.log('Response ok:', res.ok);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Response error text:', errorText);
+        throw new Error(`HTTP ${res.status}: ${res.statusText} - ${errorText}`);
+      }
+      
       const data = await res.json();
+      console.log('Articles data received:', data);
       setArticles(data);
     } catch (e) {
-      console.error('Failed to fetch articles');
+      console.error('=== FAILED TO FETCH ARTICLES ===');
+      console.error('Error:', e);
+      console.error('Error message:', e.message);
+      console.error('Stack trace:', e.stack);
     }
   };
 
@@ -106,8 +143,12 @@ const AdminDashboard = () => {
   const handleSaveArticle = async (e) => {
     e.preventDefault();
     
+    console.log('=== ADMIN DASHBOARD: handleSaveArticle ===');
+    console.log('API_URL:', API_URL);
+    
     // Validation
     if (!formData.title.trim() || !formData.content.trim() || !formData.category.trim()) {
+      console.log('Validation failed - missing fields');
       setSaveError('Please fill in all required fields');
       return;
     }
@@ -119,18 +160,25 @@ const AdminDashboard = () => {
     const method = editingArticle ? 'PUT' : 'POST';
     const url = editingArticle ? `${API_URL}/articles/${editingArticle}` : `${API_URL}/articles`;
     
+    console.log('Request details:');
+    console.log('- Method:', method);
+    console.log('- URL:', url);
+    console.log('- Form data:', formData);
+    
     try {
-      console.log('Saving article:', { method, url, formData }); // Debug log
-      
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
       
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('Response error text:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
       
       const savedArticle = await response.json();
@@ -146,7 +194,10 @@ const AdminDashboard = () => {
       }, 1000);
       
     } catch (error) {
-      console.error('Failed to save article:', error);
+      console.error('=== FAILED TO SAVE ARTICLE ===');
+      console.error('Error:', error);
+      console.error('Error message:', error.message);
+      console.error('Stack trace:', error.stack);
       setSaveError(`Failed to save: ${error.message}`);
     } finally {
       setIsSaving(false);
@@ -183,11 +234,28 @@ const AdminDashboard = () => {
 
   const handleSaveTopic = async (e) => {
     e.preventDefault();
+    
+    console.log('=== ADMIN DASHBOARD: handleSaveTopic ===');
+    console.log('API_URL:', API_URL);
+    console.log('Topic form data:', topicFormData);
+    console.log('Editing topic:', editingTopic);
+    
     setIsSavingTopic(true);
     setTopicSaveError(null);
+    setTopicSaveSuccess(null);
+    
     try {
       const method = editingTopic ? 'PUT' : 'POST';
       const url = editingTopic ? `${API_URL}/popular-topics/${editingTopic}` : `${API_URL}/popular-topics`;
+      
+      console.log('Request details:');
+      console.log('- Method:', method);
+      console.log('- URL:', url);
+      console.log('- Payload:', {
+        label: topicFormData.label,
+        link: topicFormData.link,
+        link_type: topicFormData.linkType
+      });
       
       const response = await fetch(url, {
         method,
@@ -199,18 +267,38 @@ const AdminDashboard = () => {
         })
       });
       
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
       if (!response.ok) {
-        throw new Error('Failed to save topic');
+        const errorText = await response.text();
+        console.error('Response error text:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
       
-      setIsTopicsModalOpen(false);
-      setEditingTopic(null);
-      setTopicFormData({ label: '', link: '', linkType: 'article' });
-      await fetchPopularTopics();
-      await fetchArticles();
+      const responseData = await response.json();
+      console.log('Topic saved successfully:', responseData);
+      
+      setTopicSaveSuccess(editingTopic ? 'Topic updated successfully!' : 'Topic added successfully!');
+      
+      // Close modal after short delay to show success message
+      setTimeout(() => {
+        setIsTopicsModalOpen(false);
+        setEditingTopic(null);
+        setTopicFormData({ label: '', link: '', linkType: 'article' });
+        setTopicSaveSuccess(null);
+        fetchPopularTopics();
+        fetchArticles();
+      }, 1000);
+      
+      console.log('Topics refreshed after save');
+      
     } catch (e) {
-      console.error('Failed to save topic', e);
-      setTopicSaveError('Network error or server unreachable. Please try again.');
+      console.error('=== FAILED TO SAVE TOPIC ===');
+      console.error('Error:', e);
+      console.error('Error message:', e.message);
+      console.error('Stack trace:', e.stack);
+      setTopicSaveError(`Failed to save topic: ${e.message}`);
     } finally {
       setIsSavingTopic(false);
     }
@@ -380,7 +468,13 @@ const AdminDashboard = () => {
                   <h2>Popular Topics</h2>
                   <p>Manage the quick-access chips shown on the public support portal hero section.</p>
                 </div>
-                <button className="add-btn" onClick={() => setIsTopicsModalOpen(true)} disabled={popularTopics.length >= 6}>
+                <button className="add-btn" onClick={() => {
+                  setEditingTopic(null);
+                  setTopicFormData({ label: '', link: '', linkType: 'article' });
+                  setTopicSaveError(null);
+                  setTopicSaveSuccess(null);
+                  setIsTopicsModalOpen(true);
+                }} disabled={popularTopics.length >= 6}>
                   <Plus size={16} /> Add New Topic
                 </button>
               </div>
@@ -719,6 +813,13 @@ const AdminDashboard = () => {
                 <button type="button" className="cancel-btn" onClick={() => setIsTopicsModalOpen(false)} disabled={isSavingTopic}>Cancel</button>
                 <button type="submit" className="save-btn" disabled={isSavingTopic}>{isSavingTopic ? 'Saving...' : (editingTopic ? 'Save Changes' : 'Add Topic')}</button>
               </div>
+              
+              {/* Success/Error Messages */}
+              {topicSaveSuccess && (
+                <div className="success-message" style={{color: '#16a34a', marginTop: '1rem', textAlign: 'center'}}>
+                  ✓ {topicSaveSuccess}
+                </div>
+              )}
               {topicSaveError && (
                 <div className="error-message" style={{color: '#dc2626', marginTop: '1rem', textAlign: 'center'}}>
                   ✗ {topicSaveError}

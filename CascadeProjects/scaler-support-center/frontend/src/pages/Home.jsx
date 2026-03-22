@@ -286,6 +286,10 @@ const Home = () => {
         <div className="topics-grid">
           {topics.map((topic, idx) => (
             <div key={idx} className="topic-card enhanced" onClick={() => setViewCategory(topic.title)}>
+              {/* Popular badge for Certificates (index 2) */}
+              {topic.title === 'Certificates' && (
+                <span className="popular-badge">⭐ Popular</span>
+              )}
               <div className={`topic-icon-wrapper color-${idx % 6}`}>
                 {topic.icon}
               </div>
@@ -293,8 +297,8 @@ const Home = () => {
                 <h3>{topic.title}</h3>
                 <p>{topic.desc}</p>
                 <div className="topic-meta">
-                  {topic.count > 0 && <span className="article-count-badge">{topic.count} {topic.count === 1 ? 'article' : 'articles'}</span>}
-                  <ArrowRight className="topic-arrow" size={18} />
+                  <span className="article-count-badge">{topic.count || 0} {topic.count === 1 ? 'article' : 'articles'}</span>
+                  <ArrowRight className="topic-arrow" size={20} />
                 </div>
               </div>
             </div>
