@@ -14,12 +14,10 @@ const getApiBaseUrl = () => {
   // Check if we're on Railway (production)
   if (window.location.hostname.includes('.up.railway.app')) {
     console.log('Detected Railway deployment');
-    // For Railway, we need to use the backend service URL
-    // This should be set as an environment variable VITE_API_URL
-    // Fallback to a different Railway service URL pattern
-    const backendUrl = import.meta.env.VITE_API_URL || `https://${window.location.hostname.replace('courteous-charm', 'scaler-support-backend')}`;
-    console.log('Using backend URL:', backendUrl);
-    return backendUrl;
+    // For Railway monorepo deployment, backend and frontend are on the same domain
+    // Use empty string to make relative API calls to the same domain
+    console.log('Using same-origin API calls (empty base URL)');
+    return '';
   }
   
   // For local development, use empty string (Vite proxy handles /api routes)
