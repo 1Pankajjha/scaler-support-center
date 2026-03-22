@@ -16,14 +16,15 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy the built dist folder and health check script
+# Copy the built dist folder and server script
 COPY --from=builder /app/dist ./dist
+COPY package*.json ./
+COPY server.js ./
 
-# Create a simple Node.js server that serves the frontend and has a health endpoint
-RUN npm install -g http-server
+# Install only production dependencies
+RUN npm install --only=production
 
 EXPOSE 3000
 
-# Ensure the app listens on the PORT environment variable (Railway injects this)
-# http-server will use the PORT env var, defaulting to 3000
-CMD ["sh", "-c", "http-server dist -p ${PORT:-3000} -c-1"]
+# Start the Node.js server
+CMD ["node", "server.js"]
