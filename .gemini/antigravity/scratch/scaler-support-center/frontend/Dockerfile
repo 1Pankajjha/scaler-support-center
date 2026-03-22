@@ -20,6 +20,8 @@ RUN npm install -g serve
 
 COPY --from=builder /app/dist ./dist
 
+# Expose the port (Railway provides this via variable)
 EXPOSE 3000
 
-CMD ["serve", "-s", "dist", "-l", "3000", "-H", "0.0.0.0"]
+# Start serve using the dynamic PORT provided by Railway
+CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000} -H 0.0.0.0"]
