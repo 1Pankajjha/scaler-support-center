@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Search, Plus, Edit2, Trash2, Eye, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Search, Plus, Edit2, Trash2, Eye, RefreshCw, TrendingUp, Bell, User, BookOpen } from 'lucide-react';
+import { useAdminAuth } from '../contexts/AdminAuthContext';
 import '../styles/AdminDashboard.css';
 
-const API_URL = 'https://scaler-support-center-backend-production.up.railway.app/api';
+const API_URL = 'http://localhost:5001/api';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { adminUser, adminLogout, validateAdminSession } = useAdminAuth();
   const [activeTab, setActiveTab] = useState('faqs');
   
   // Data States
   const [articles, setArticles] = useState([]);
   const [insights, setInsights] = useState(null);
+  const [popularTopics, setPopularTopics] = useState([]);
+  const [originalTopics, setOriginalTopics] = useState([]);
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,15 +28,51 @@ const AdminDashboard = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [editingArticle, setEditingArticle] = useState(null);
   const [formData, setFormData] = useState({ title: '', content: '', category: '', status: 'draft' });
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [saveSuccess, setSaveSuccess] = useState(null);
+  
+  // Popular Topics Modal States
+  const [isTopicsModalOpen, setIsTopicsModalOpen] = useState(false);
+  const [editingTopic, setEditingTopic] = useState(null);
+  const [topicFormData, setTopicFormData] = useState({ label: '', link: '', linkType: 'article' });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Category Modal States
+  const [categories, setCategories] = useState([]);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryFormData, setCategoryFormData] = useState({ title: '', description: '', icon: 'BookOpen', themeColor: '' });
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    if (!token) navigate('/admin/login');
-    else {
-      fetchArticles();
-      fetchInsights();
+    // Admin authentication is handled by AdminProtectedRoute
+    // Just fetch data when component mounts
+    fetchArticles();
+    fetchInsights();
+    fetchPopularTopics();
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch(`${API_URL}/categories`);
+      const data = await res.json();
+      setCategories(data);
+    } catch (e) {
+      console.error('Failed to fetch categories');
     }
-  }, [navigate]);
+  };
+
+  const fetchPopularTopics = async () => {
+    try {
+      const res = await fetch(`${API_URL}/popular-topics`);
+      const data = await res.json();
+      setPopularTopics(data);
+      setOriginalTopics(JSON.parse(JSON.stringify(data))); // Deep copy
+    } catch (e) {
+      console.error('Failed to fetch popular topics');
+    }
+  };
 
   const fetchArticles = async () => {
     try {
@@ -62,9 +102,7 @@ const AdminDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_email');
-    navigate('/admin/login');
+    adminLogout();
   };
 
   const handleOpenModal = (article = null) => {
@@ -80,19 +118,51 @@ const AdminDashboard = () => {
 
   const handleSaveArticle = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!formData.title.trim() || !formData.content.trim() || !formData.category.trim()) {
+      setSaveError('Please fill in all required fields');
+      return;
+    }
+    
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+    
     const method = editingArticle ? 'PUT' : 'POST';
     const url = editingArticle ? `${API_URL}/articles/${editingArticle}` : `${API_URL}/articles`;
     
     try {
-      await fetch(url, {
+      console.log('Saving article:', { method, url, formData }); // Debug log
+      
+      const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-      setIsModalOpen(false);
-      fetchArticles();
-    } catch (e) {
-      console.error('Failed to save article');
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const savedArticle = await response.json();
+      console.log('Article saved successfully:', savedArticle);
+      
+      setSaveSuccess(editingArticle ? 'Article updated successfully!' : 'Article created successfully!');
+      
+      // Close modal after short delay to show success message
+      setTimeout(() => {
+        setIsModalOpen(false);
+        setSaveSuccess(null);
+        fetchArticles();
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Failed to save article:', error);
+      setSaveError(`Failed to save: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -106,6 +176,80 @@ const AdminDashboard = () => {
     }
   };
 
+  // Popular Topics handlers
+  const handleEditTopic = (topic) => {
+    setEditingTopic(topic.id);
+    setTopicFormData({ label: topic.label, link: topic.link, linkType: topic.link_type || 'article' });
+    setIsTopicsModalOpen(true);
+  };
+
+  const handleDeleteTopic = async (id) => {
+    if(!window.confirm('Are you sure you want to delete this popular topic?')) return;
+    try {
+      await fetch(`${API_URL}/popular-topics/${id}`, { method: 'DELETE' });
+      await fetchPopularTopics();
+      setHasUnsavedChanges(false);
+    } catch (e) {
+      console.error('Failed to delete topic');
+    }
+  };
+
+  const handleSaveTopic = async (e) => {
+    e.preventDefault();
+    try {
+      const method = editingTopic ? 'PUT' : 'POST';
+      const url = editingTopic ? `${API_URL}/popular-topics/${editingTopic}` : `${API_URL}/popular-topics`;
+      
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: topicFormData.label,
+          link: topicFormData.link,
+          link_type: topicFormData.linkType
+        })
+      });
+      
+      setIsTopicsModalOpen(false);
+      setEditingTopic(null);
+      setTopicFormData({ label: '', link: '', linkType: 'article' });
+      await fetchPopularTopics();
+      await fetchArticles();
+    } catch (e) {
+      console.error('Failed to save topic');
+    }
+  };
+
+  const handlePublishChanges = async () => {
+    try {
+      // Reorder topics if needed
+      const reorderedTopics = popularTopics.map((topic, index) => ({
+        id: topic.id,
+        order_index: index + 1
+      }));
+      
+      if (reorderedTopics.length > 0) {
+        await fetch(`${API_URL}/popular-topics/reorder`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topics: reorderedTopics })
+        });
+      }
+      
+      await fetchPopularTopics();
+      setHasUnsavedChanges(false);
+      alert('Changes published successfully!');
+    } catch (e) {
+      console.error('Failed to publish changes');
+      alert('Failed to publish changes. Please try again.');
+    }
+  };
+
+  const handleDiscardChanges = () => {
+    setPopularTopics(JSON.parse(JSON.stringify(originalTopics)));
+    setHasUnsavedChanges(false);
+  };
+
   const uniqueCategories = ['All', ...new Set(articles.map(a => a.category))];
   
   const filteredArticles = articles.filter(a => {
@@ -114,26 +258,77 @@ const AdminDashboard = () => {
     return matchesSearch && matchesCat;
   });
 
+  const handleSaveCategory = async () => {
+    if (!categoryFormData.title.trim()) {
+      setSaveError('Title is required');
+      return;
+    }
+    
+    setIsSaving(true);
+    setSaveError(null);
+    
+    try {
+      const method = editingCategory ? 'PUT' : 'POST';
+      const url = editingCategory ? `${API_URL}/categories/${editingCategory}` : `${API_URL}/categories`;
+      
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categoryFormData)
+      });
+      
+      if (!res.ok) throw new Error('Failed to save category');
+      
+      await fetchCategories();
+      setIsCategoryModalOpen(false);
+    } catch (err) {
+      setSaveError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this category?")) return;
+    try {
+      await fetch(`${API_URL}/categories/${id}`, { method: 'DELETE' });
+      await fetchCategories();
+    } catch (e) {
+      console.error('Failed to delete category');
+    }
+  };
+
   return (
     <div className="admin-layout">
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>Scaler Admin</h2>
-          <p className="admin-email">{localStorage.getItem('admin_email')}</p>
+          <div className="sidebar-logo">
+            <svg className="scaler-official-logo white-logo" viewBox="0 0 1324 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M1147.8 228.928C1147.58 228.163 1147.43 227.38 1147.35 226.588C1147.35 195.638 1147.35 164.685 1147.35 133.728C1147.35 132.188 1147.27 130.638 1147.35 129.107C1147.48 127.177 1148.36 125.377 1149.81 124.096C1156.13 117.876 1162.49 111.695 1168.78 105.436C1181.25 92.9706 1193.71 80.4789 1206.15 67.9611C1210.83 63.2881 1215.52 58.6475 1220.23 54.0395C1220.93 53.4591 1221.68 52.9374 1222.46 52.4796H1323.1C1323.4 53.2759 1323.6 54.1037 1323.7 54.9461C1323.7 86.3121 1323.7 117.671 1323.7 149.024C1323.74 149.682 1323.84 150.334 1324 150.974V154.065C1322.96 155.235 1321.97 156.463 1320.87 157.574C1316.55 161.929 1312.22 166.264 1307.87 170.58C1302.33 176.049 1296.72 181.45 1291.21 186.938C1278.13 199.976 1265.07 213.024 1252.02 226.081C1251.05 227.114 1249.84 228.031 1248.75 229.006L1147.8 228.928Z" fill="white"></path>
+            </svg>
+            <h2>Support Admin</h2>
+          </div>
+          <p className="admin-email">{adminUser?.email}</p>
         </div>
         <nav className="sidebar-nav">
           <button className={`nav-item ${activeTab === 'faqs' ? 'active' : ''}`} onClick={() => setActiveTab('faqs')}>
             <FileText size={18} /> FAQ Management
           </button>
+          <button className={`nav-item ${activeTab === 'topics' ? 'active' : ''}`} onClick={() => setActiveTab('topics')}>
+            <TrendingUp size={18} /> Popular Topics
+          </button>
           <button className={`nav-item ${activeTab === 'insights' ? 'active' : ''}`} onClick={() => setActiveTab('insights')}>
             <LayoutDashboard size={18} /> Ticket Insights
           </button>
-          <button className={`nav-item ${activeTab === 'team' ? 'active' : ''}`} onClick={() => setActiveTab('team')}>
-            <Users size={18} /> Team Performance
+          <button className={`nav-item ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}>
+            <BookOpen size={18} /> Content Categories
           </button>
-          <button className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => setActiveTab('reports')}>
-            <Settings size={18} /> Reporting
+          <button className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
+            <Users size={18} /> Content Analytics
+          </button>
+          <button className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+            <Settings size={18} /> Settings
           </button>
         </nav>
         <div className="sidebar-footer">
@@ -146,7 +341,15 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <main className="admin-main">
         <header className="admin-topbar">
-          <h1>{activeTab === 'faqs' ? 'FAQ Management' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1) + ' Dashboard'}</h1>
+          <h1>{activeTab === 'faqs' ? 'FAQ Management' : activeTab === 'topics' ? 'Popular Topics' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1) + ' Dashboard'}</h1>
+          <div className="admin-header-actions">
+            <button className="notification-btn">
+              <Bell size={18} />
+            </button>
+            <div className="user-avatar">
+              <User size={16} />
+            </div>
+          </div>
         </header>
         
         <div className="dashboard-content">
@@ -217,21 +420,215 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {activeTab === 'insights' && insights && (
-            <div className="insights-view">
-              <div className="metric-cards">
-                <div className="card"><h3>Total Open</h3><p>{insights.openTickets}</p></div>
-                <div className="card warning"><h3>&gt;12 Hours</h3><p>0</p></div>
-                <div className="card danger"><h3>Escalations</h3><p>0</p></div>
-                <div className="card text-danger"><h3>Detractors</h3><p>0</p></div>
+          {activeTab === 'topics' && (
+            <div className="topics-view">
+              <div className="topics-header">
+                <div>
+                  <h2>Popular Topics</h2>
+                  <p>Manage the quick-access chips shown on the public support portal hero section.</p>
+                </div>
+                <button className="add-btn" onClick={() => setIsTopicsModalOpen(true)} disabled={popularTopics.length >= 6}>
+                  <Plus size={16} /> Add New Topic
+                </button>
               </div>
-              <div className="placeholder-box">Detailed Ticket Logs Pending System Integration</div>
+
+              {/* Live Preview */}
+              <div className="preview-section">
+                <h3>Live Preview</h3>
+                <div className="preview-chips-container">
+                  {popularTopics.map(topic => (
+                    <div key={topic.id} className="preview-chip">
+                      {topic.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Topics Table */}
+              <div className="table-container">
+                <table className="topics-table">
+                  <thead>
+                    <tr>
+                      <th>Label</th>
+                      <th>Link / Article ID</th>
+                      <th>Order</th>
+                      <th className="th-actions">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {popularTopics.length === 0 ? (
+                      <tr><td colSpan="4" className="empty-state">No popular topics configured.</td></tr>
+                    ) : (
+                      popularTopics.map(topic => (
+                        <tr key={topic.id}>
+                          <td className="topic-label">{topic.label}</td>
+                          <td className="topic-link">{topic.link}</td>
+                          <td className="topic-order">{topic.order_index}</td>
+                          <td className="actions-cell">
+                            <button className="action-btn edit" onClick={() => handleEditTopic(topic)} title="Edit Topic"><Edit2 size={16}/></button>
+                            <button className="action-btn delete" onClick={() => handleDeleteTopic(topic.id)} title="Delete Topic"><Trash2 size={16}/></button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {popularTopics.length >= 6 && (
+                <div className="warning-chip">Max 6 topics reached</div>
+              )}
+
+              <div className="topics-actions">
+                <button className="publish-btn" onClick={handlePublishChanges} disabled={!hasUnsavedChanges}>
+                  Publish Changes
+                </button>
+                <button className="discard-btn" onClick={handleDiscardChanges} disabled={!hasUnsavedChanges}>
+                  Discard Changes
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Other tabs remain placeholders */}
-          {(activeTab === 'team' || activeTab === 'reports') && (
-            <div className="placeholder-box">Admin Module Integration Pending</div>
+          {activeTab === 'insights' && (
+            <div className="insights-view">
+              <div className="reports-header" style={{ marginBottom: '2rem' }}>
+                <h3>Ticket Insights</h3>
+                <p>Overview of support tickets and resolution status</p>
+              </div>
+              <div className="metric-cards">
+                <div className="card">
+                  <h3>Total Tickets</h3>
+                  <p>{insights?.totalTickets || 0}</p>
+                </div>
+                <div className="card">
+                  <h3>Open Tickets</h3>
+                  <p>{insights?.openTickets || 0}</p>
+                </div>
+                <div className="card">
+                  <h3>Resolved Tickets</h3>
+                  <p>{insights?.resolvedTickets || 0}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'categories' && (
+            <div className="topics-view">
+              <div className="topics-header">
+                <div>
+                  <h2>Content Categories</h2>
+                  <p>Manage the main knowledge base categories available to learners.</p>
+                </div>
+                <button 
+                  className="add-btn" 
+                  onClick={() => {
+                    setEditingCategory(null);
+                    setCategoryFormData({ title: '', description: '', icon: 'BookOpen', themeColor: '' });
+                    setSaveError(null);
+                    setIsCategoryModalOpen(true);
+                  }}
+                >
+                  <Plus size={16} /> Add Category
+                </button>
+              </div>
+
+              <div className="table-container">
+                <table className="topics-table">
+                  <thead>
+                    <tr>
+                      <th>Category Title</th>
+                      <th>Description</th>
+                      <th>Icon ID</th>
+                      <th>Articles</th>
+                      <th className="th-actions">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categories.length === 0 ? (
+                      <tr><td colSpan="5" className="empty-state">No categories configured.</td></tr>
+                    ) : (
+                      categories.map(cat => (
+                        <tr key={cat.id}>
+                          <td className="topic-label" style={{ fontWeight: '600' }}>{cat.title}</td>
+                          <td className="topic-link">{cat.description}</td>
+                          <td className="topic-order">{cat.icon}</td>
+                          <td className="topic-order">{cat.articleCount || 0}</td>
+                          <td className="actions-cell">
+                            <button className="action-btn edit" onClick={() => {
+                              setEditingCategory(cat.id);
+                              setCategoryFormData({ title: cat.title, description: cat.description || '', icon: cat.icon || 'BookOpen', themeColor: cat.themeColor || '' });
+                              setSaveError(null);
+                              setIsCategoryModalOpen(true);
+                            }} title="Edit Category"><Edit2 size={16}/></button>
+                            <button className="action-btn delete" onClick={() => handleDeleteCategory(cat.id)} title="Delete Category"><Trash2 size={16}/></button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <div className="analytics-view">
+              <div className="reports-header" style={{ marginBottom: '2rem' }}>
+                <h3>Content Analytics</h3>
+                <p>Help center performance and content usage analytics</p>
+              </div>
+              
+              <div className="metric-cards" style={{ marginBottom: '2rem' }}>
+                <div className="card">
+                  <h3>Total Articles</h3>
+                  <p>{articles.length}</p>
+                </div>
+                <div className="card">
+                  <h3>Published</h3>
+                  <p>{articles.filter(a => a.status === 'published').length}</p>
+                </div>
+                <div className="card">
+                  <h3>Drafts</h3>
+                  <p>{articles.filter(a => a.status === 'draft').length}</p>
+                </div>
+                <div className="card">
+                  <h3>Categories</h3>
+                  <p>{uniqueCategories.length - 1}</p>
+                </div>
+              </div>
+              
+              <div className="content-insights">
+                <h3>Visual Breakdown by Category</h3>
+                <div className="category-breakdown" style={{ marginTop: '1.5rem' }}>
+                  {uniqueCategories.filter(c => c !== 'All').map(category => {
+                    const categoryArticles = articles.filter(a => a.category === category);
+                    const publishedCount = categoryArticles.filter(a => a.status === 'published').length;
+                    return (
+                      <div key={category} className="category-stat" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span className="category-name" style={{ minWidth: '150px', fontWeight: '500', color: '#334155' }}>{category}</span>
+                        <div className="category-bar" style={{ flex: 1, backgroundColor: '#e2e8f0', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
+                          <div className="published-bar" style={{width: `${(publishedCount / Math.max(categoryArticles.length, 1)) * 100}%`, backgroundColor: '#4f46e5', height: '100%'}}></div>
+                        </div>
+                        <span className="category-count" style={{ minWidth: '50px', textAlign: 'right', fontSize: '0.9rem', color: '#64748b' }}>{publishedCount}/{categoryArticles.length}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="settings-view">
+              <div className="reports-header" style={{ marginBottom: '2rem' }}>
+                <h3>Settings</h3>
+                <p>System configuration and preferences</p>
+              </div>
+              <div className="placeholder-box" style={{ background: '#fff', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '4rem 2rem', textAlign: 'center', color: '#94a3b8' }}>
+                Settings panel coming soon.
+              </div>
+            </div>
           )}
         </div>
       </main>
@@ -272,9 +669,23 @@ const AdminDashboard = () => {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="cancel-btn" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="save-btn">{editingArticle ? 'Save Changes' : 'Create Article'}</button>
+                <button type="button" className="cancel-btn" onClick={() => setIsModalOpen(false)} disabled={isSaving}>Cancel</button>
+                <button type="submit" className="save-btn" disabled={isSaving}>
+                  {isSaving ? (editingArticle ? 'Saving...' : 'Creating...') : (editingArticle ? 'Save Changes' : 'Create Article')}
+                </button>
               </div>
+              
+              {/* Success/Error Messages */}
+              {saveSuccess && (
+                <div className="success-message" style={{color: '#16a34a', marginTop: '1rem', textAlign: 'center'}}>
+                  ✓ {saveSuccess}
+                </div>
+              )}
+              {saveError && (
+                <div className="error-message" style={{color: '#dc2626', marginTop: '1rem', textAlign: 'center'}}>
+                  ✗ {saveError}
+                </div>
+              )}
             </form>
           </div>
         </div>
@@ -297,6 +708,122 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* POPULAR TOPICS MODAL */}
+      {isTopicsModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsTopicsModalOpen(false)}>
+          <div className="admin-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{editingTopic ? 'Edit Topic' : 'Add New Topic'}</h2>
+            </div>
+            <form onSubmit={handleSaveTopic} className="modal-form">
+              <div className="form-group">
+                <label>Label</label>
+                <input 
+                  required 
+                  type="text" 
+                  value={topicFormData.label} 
+                  onChange={e => setTopicFormData({...topicFormData, label: e.target.value})} 
+                  placeholder="e.g., EMI & Payments" 
+                  maxLength="30"
+                />
+                <div className="char-counter">{topicFormData.label.length}/30</div>
+              </div>
+              
+              <div className="form-group">
+                <label>Link Type</label>
+                <select value={topicFormData.linkType} onChange={e => setTopicFormData({...topicFormData, linkType: e.target.value})}>
+                  <option value="article">FAQ Article</option>
+                  <option value="url">Custom URL</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>{topicFormData.linkType === 'article' ? 'Article ID' : 'Custom URL'}</label>
+                <input 
+                  required 
+                  type="text" 
+                  value={topicFormData.link} 
+                  onChange={e => setTopicFormData({...topicFormData, link: e.target.value})} 
+                  placeholder={topicFormData.linkType === 'article' ? 'article-id' : 'https://example.com/page'} 
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="cancel-btn" onClick={() => setIsTopicsModalOpen(false)}>Cancel</button>
+                <button type="submit" className="save-btn">{editingTopic ? 'Save Changes' : 'Add Topic'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CATEGORY MODAL */}
+      {isCategoryModalOpen && (
+        <div className="modal-overlay" onClick={() => !isSaving && setIsCategoryModalOpen(false)}>
+          <div className="admin-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{editingCategory ? 'Edit Category' : 'New Category'}</h2>
+              <button className="close-icon-btn" disabled={isSaving} onClick={() => setIsCategoryModalOpen(false)}>×</button>
+            </div>
+            
+            <div className="modal-form" style={{ padding: '2rem' }}>
+              {saveError && (
+                <div className="error-message" style={{color: '#dc2626', marginBottom: '1rem'}}>
+                  ✗ {saveError}
+                </div>
+              )}
+              
+              <div className="form-group">
+                <label style={{display: 'block', marginBottom: '8px', fontWeight: '500'}}>Category Title <span className="required" style={{color: '#ef4444'}}>*</span></label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Account & Billing" 
+                  value={categoryFormData.title}
+                  onChange={e => setCategoryFormData({...categoryFormData, title: e.target.value})}
+                  disabled={isSaving}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '1rem', outline: 'none' }}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{display: 'block', marginBottom: '8px', fontWeight: '500'}}>Description</label>
+                <input 
+                  type="text" 
+                  placeholder="Short description for the learner UI" 
+                  value={categoryFormData.description}
+                  onChange={e => setCategoryFormData({...categoryFormData, description: e.target.value})}
+                  disabled={isSaving}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '1rem', outline: 'none' }}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{display: 'block', marginBottom: '8px', fontWeight: '500'}}>Icon Identifier</label>
+                <select 
+                  value={categoryFormData.icon}
+                  onChange={e => setCategoryFormData({...categoryFormData, icon: e.target.value})}
+                  disabled={isSaving}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
+                >
+                  <option value="BookOpen">BookOpen</option>
+                  <option value="CreditCard">CreditCard</option>
+                  <option value="Award">Award</option>
+                  <option value="User">User</option>
+                  <option value="Users">Users</option>
+                  <option value="Briefcase">Briefcase</option>
+                </select>
+              </div>
+              
+              <div className="modal-actions" style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button className="cancel-btn" disabled={isSaving} onClick={() => setIsCategoryModalOpen(false)}>Cancel</button>
+                <button className="save-btn" disabled={isSaving} onClick={handleSaveCategory}>
+                  {isSaving ? 'Saving...' : (editingCategory ? 'Update' : 'Create')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
