@@ -63,10 +63,10 @@ db.exec(`
 const existingTopics = db.prepare('SELECT COUNT(*) as count FROM popular_topics').get();
 if (existingTopics.count === 0) {
   const seedTopics = [
-    { label: 'EMI & Payments', link: 'emi-payments', link_type: 'article', order_index: 1 },
-    { label: 'Certificate download', link: 'certificate-download', link_type: 'article', order_index: 2 },
-    { label: 'Reset password', link: 'reset-password', link_type: 'article', order_index: 3 },
-    { label: 'Session scheduling', link: 'session-scheduling', link_type: 'article', order_index: 4 }
+    { label: 'EMI & Payments', link: '5', link_type: 'article', order_index: 1 },
+    { label: 'Certificate download', link: '4', link_type: 'article', order_index: 2 },
+    { label: 'Reset password', link: '6', link_type: 'article', order_index: 3 },
+    { label: 'Session scheduling', link: '1', link_type: 'article', order_index: 4 }
   ];
   
   const insertStmt = db.prepare('INSERT INTO popular_topics (label, link, link_type, order_index) VALUES (?, ?, ?, ?)');
