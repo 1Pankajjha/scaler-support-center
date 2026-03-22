@@ -16,12 +16,13 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-RUN npm install -g serve
-
+# Copy the built dist folder
 COPY --from=builder /app/dist ./dist
 
-# Expose the port (Railway provides this via variable)
+# Install a simple HTTP server
+RUN npm install -g http-server
+
 EXPOSE 3000
 
-# Start serve using the dynamic PORT provided by Railway
-CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000} -H 0.0.0.0"]
+# Start the HTTP server on port 3000, listening on all interfaces
+CMD ["http-server", "dist", "-p", "3000", "-c-1"]
