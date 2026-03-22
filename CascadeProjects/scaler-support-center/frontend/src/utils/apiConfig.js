@@ -19,7 +19,15 @@ const getApiBaseUrl = () => {
     return backendUrl;
   }
   
-  // Default to same origin (for local development)
+  // Check if we're in local development (localhost)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    console.log('Detected local development');
+    const localBackendUrl = 'http://localhost:5001';
+    console.log('Using local backend URL:', localBackendUrl);
+    return localBackendUrl;
+  }
+  
+  // Default to same origin (for other cases)
   console.log('Using same origin:', window.location.origin);
   return window.location.origin;
 };
