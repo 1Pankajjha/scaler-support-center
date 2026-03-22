@@ -1,6 +1,10 @@
 // API service for frontend to communicate with backend
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+// For Railway, the backend URL will be available at /api
+// For local development, use localhost
+const API_BASE_URL = import.meta.env.PROD 
+  ? ''  // In production on Railway, use relative URLs
+  : (import.meta.env.VITE_API_URL || 'http://localhost:5001');
 
 // Helper function to handle API responses
 const handleResponse = async (response) => {
