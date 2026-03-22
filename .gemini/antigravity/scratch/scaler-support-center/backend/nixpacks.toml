@@ -1,0 +1,12 @@
+[phases.setup]
+nixPkgs = ['nodejs_20', 'npm']
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = 'npm start'
+
+[variables]
+NODE_ENV = 'production'
+PORT = '5001'
