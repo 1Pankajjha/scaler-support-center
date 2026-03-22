@@ -86,8 +86,15 @@ const Home = () => {
           fetch(`${API_BASE_URL}/api/popular-topics`)
         ]);
         
+        console.log('Articles response status:', articlesRes.status);
+        console.log('Topics response status:', topicsRes.status);
+        
         if (!articlesRes.ok || !topicsRes.ok) {
-          throw new Error('Failed to fetch data');
+          console.error('API Response errors:', {
+            articles: await articlesRes.text(),
+            topics: await topicsRes.text()
+          });
+          throw new Error(`Failed to fetch data. Articles: ${articlesRes.status}, Topics: ${topicsRes.status}`);
         }
         
         const articlesData = await articlesRes.json();
