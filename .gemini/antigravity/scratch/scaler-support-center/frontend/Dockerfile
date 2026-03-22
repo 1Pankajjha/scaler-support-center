@@ -19,7 +19,7 @@ WORKDIR /app
 # Copy the built dist folder and server script
 COPY --from=builder /app/dist ./dist
 COPY package*.json ./
-COPY server.js ./
+COPY server.cjs ./
 
 # Install only production dependencies
 RUN npm install --only=production
@@ -27,4 +27,4 @@ RUN npm install --only=production
 EXPOSE 3000
 
 # Start the Node.js server
-CMD ["node", "server.js"]
+CMD ["node", "server.cjs"]
