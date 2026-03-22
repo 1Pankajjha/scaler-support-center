@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, MessageCircle, Mail, BookOpen, CreditCard, Award, User, Users, Briefcase, AlertCircle, CheckCircle, ArrowRight, ArrowLeft, ChevronRight, ThumbsUp, ThumbsDown } from 'lucide-react';
 import '../styles/Home.css';
 import Footer from '../components/Footer';
+import getApiBaseUrl from '../utils/apiConfig';
 const Home = () => {
   const [showModal, setShowModal] = useState(false);
   const [chatMessages, setChatMessages] = useState([{ role: 'assistant', content: 'Hello! I am the Scaler AI assistant. How can I help you today?' }]);
@@ -76,17 +77,8 @@ const Home = () => {
         setIsLoading(true);
         setError(null);
         
-        // For Railway, the backend is usually on a subdomain
-        // Try to detect if we're on Railway and construct backend URL
-        let API_BASE_URL = import.meta.env.VITE_API_URL;
-        if (!API_BASE_URL && window.location.hostname.includes('.up.railway.app')) {
-          // Extract the project name and add -1 for backend
-          const projectName = window.location.hostname.split('.up.railway.app')[0];
-          API_BASE_URL = `https://${projectName}-1.up.railway.app`;
-        }
-        if (!API_BASE_URL) {
-          API_BASE_URL = window.location.origin;
-        }
+        // Get the API base URL
+        const API_BASE_URL = getApiBaseUrl();
         
         // Fetch articles and popular topics in parallel
         const [articlesRes, topicsRes] = await Promise.all([
@@ -159,15 +151,8 @@ const Home = () => {
     setIsTyping(true);
 
     try {
-      // Use the same API_BASE_URL logic as above
-      let API_BASE_URL = import.meta.env.VITE_API_URL;
-      if (!API_BASE_URL && window.location.hostname.includes('.up.railway.app')) {
-        const projectName = window.location.hostname.split('.up.railway.app')[0];
-        API_BASE_URL = `https://${projectName}-1.up.railway.app`;
-      }
-      if (!API_BASE_URL) {
-        API_BASE_URL = window.location.origin;
-      }
+      // Use the same API base URL configuration
+      const API_BASE_URL = getApiBaseUrl();
       
       const res = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
