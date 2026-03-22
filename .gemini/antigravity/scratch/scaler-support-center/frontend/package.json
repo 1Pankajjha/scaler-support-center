@@ -7,15 +7,15 @@
     "prebuild": "rm -rf dist || true",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "serve -s dist -l 3000"
+    "start": "node server.js"
   },
   "dependencies": {
+    "express": "^4.22.1",
     "lucide-react": "^0.292.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.18.0",
-    "serve": "^14.2.1",
-    "express": "^4.18.2"
+    "serve": "^14.2.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
