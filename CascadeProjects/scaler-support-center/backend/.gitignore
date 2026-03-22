@@ -1,0 +1,4 @@
+node_modules/
+scaler.db
+.env
+.DS_Store
