@@ -4,9 +4,23 @@
 // - Netlify: Use /api (will be redirected to Railway)
 // - Railway: Use relative URLs
 // - Local: Use localhost
-const API_BASE_URL = import.meta.env.PROD 
-  ? '/api'  // In production, use relative path (works for both Netlify and Railway)
-  : (import.meta.env.VITE_API_URL || 'http://localhost:5001');
+// Determine the API base URL based on environment
+const getApiBaseUrl = () => {
+  // 1. Check for explicit API URL from environment (highest priority)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // 2. Fallback for production (Netlify or unified Railway)
+  if (import.meta.env.PROD) {
+    return '/api';
+  }
+  
+  // 3. Fallback for development
+  return 'http://localhost:5001';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Helper function to handle API responses
 const handleResponse = async (response) => {

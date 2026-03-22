@@ -299,20 +299,18 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-if (process.env.NODE_ENV !== 'production' && !isVercel) {
-  const server = app.listen(port, () => {
-    console.log(`Backend server running on http://localhost:${port}`);
-  });
-  
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`Port ${port} is already in use. Please try setting PORT env override (e.g., PORT=5003 npm run dev).`);
-      process.exit(1);
-    } else {
-      console.error(err);
-    }
-  });
-}
+const server = app.listen(port, () => {
+  console.log(`Backend server running on port ${port}`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${port} is already in use. Please try setting PORT env override (e.g., PORT=5003 npm run dev).`);
+    process.exit(1);
+  } else {
+    console.error(err);
+  }
+});
 
 // Export for Vercel Serverless Function
 module.exports = app;
