@@ -216,8 +216,8 @@ const Home = () => {
           </a>
         </div>
         <div className="header-right">
-          <span className="header-help-cta" style={{ cursor: 'default', textDecoration: 'none' }}>
-            We succeed when you succeed 🚀
+          <span className="header-help-cta" style={{ cursor: 'default', textDecoration: 'none', color: '#17181c', fontWeight: '600', fontSize: '1.1rem' }}>
+            We're here to help 💙
           </span>
         </div>
       </header>
@@ -729,16 +729,6 @@ const Home = () => {
           </div>
         </div>
       )}
-
-      {/* Brand Strap Section */}
-      <section className="brand-strap-container">
-        <div className="brand-strap-content">
-          <div className="brand-strap-text">
-            <h2 className="brand-strap-quote">Your growth is our only metric of success 🚀</h2>
-            <p className="brand-strap-attribution">— Anshuman Singh, Co-Founder, Scaler</p>
-          </div>
-        </div>
-      </section>
 
       <Footer />
     </div>
