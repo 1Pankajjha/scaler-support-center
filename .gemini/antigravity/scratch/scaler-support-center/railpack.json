@@ -1,0 +1,22 @@
+{
+  "build": {
+    "builder": "nixpacks",
+    "buildCommand": "npm run build",
+    "installCommand": "npm install",
+    "startCommand": "./start.sh",
+    "watchPaths": [
+      "frontend/**"
+    ],
+    "env": {
+      "NODE_ENV": "production"
+    },
+    "buildDirectory": "frontend"
+  },
+  "deploy": {
+    "startCommand": "./start.sh",
+    "restartPolicyType": "on_failure",
+    "restartPolicyMaxRetries": 10,
+    "healthCheckPath": "/",
+    "healthCheckTimeout": 100
+  }
+}
