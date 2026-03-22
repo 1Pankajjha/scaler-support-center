@@ -113,7 +113,17 @@ const Home = () => {
         
       } catch (err) {
         console.error('Failed to fetch data:', err);
+        console.error('Attempted API URL:', getApiBaseUrl());
         setError('Unable to load help content. Please refresh the page.');
+        // Set fallback category counts to show static cards
+        setCategoryCounts({
+          'Course & Curriculum': 0,
+          'Billing & Payments': 0,
+          'Certificates': 0,
+          'Account & Login': 0,
+          'Mentorship': 0,
+          'Placements': 0
+        });
       } finally {
         setIsLoading(false);
       }
