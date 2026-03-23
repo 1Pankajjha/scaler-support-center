@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MessageCircle, Mail, BookOpen, CreditCard, Award, User, Users, Briefcase, AlertCircle, CheckCircle, ArrowRight, ArrowLeft, ChevronRight, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Search, MessageCircle, Mail, BookOpen, CreditCard, Award, User, Users, Briefcase, AlertCircle, CheckCircle, ArrowRight, ArrowLeft, ChevronRight, ThumbsUp, ThumbsDown, Clock } from 'lucide-react';
 import '../styles/Home.css';
 import Footer from '../components/Footer';
 import getApiBaseUrl from '../utils/apiConfig';
@@ -136,6 +136,21 @@ const Home = () => {
     
     return () => clearInterval(interval);
   }, []);
+
+  const getCategoryColors = (title) => {
+    const colors = {
+      'Course & Curriculum': { iconColor: '#8B5CF6', bgColor: 'from-purple-50 to-purple-100' },
+      'Billing & Payments': { iconColor: '#EC4899', bgColor: 'from-pink-50 to-rose-100' },
+      'Certificates': { iconColor: '#10B981', bgColor: 'from-emerald-50 to-green-100' },
+      'Account & Login': { iconColor: '#F59E0B', bgColor: 'from-orange-50 to-amber-100' },
+      'Mentorship': { iconColor: '#0EA5E9', bgColor: 'from-blue-50 to-cyan-100' },
+      'Placements': { iconColor: '#6366F1', bgColor: 'from-indigo-50 to-purple-100' },
+      'Account & Access': { iconColor: '#F59E0B', bgColor: 'from-orange-50 to-amber-100' },
+      'Career & Placements': { iconColor: '#6366F1', bgColor: 'from-indigo-50 to-purple-100' },
+      'Certifications': { iconColor: '#10B981', bgColor: 'from-emerald-50 to-green-100' }
+    };
+    return colors[title] || { iconColor: '#6B7280', bgColor: 'from-gray-50 to-gray-100' };
+  };
 
   const predefinedTopics = [
     { id: 'Course & Curriculum', icon: <BookOpen />, title: "Course & Curriculum", desc: "Syllabus, modules, schedule, content queries" },
@@ -294,66 +309,91 @@ const Home = () => {
           <p className="section-subtitle">Choose a category to find the right answers faster</p>
         </div>
         <div className="topics-grid">
-          {topics.map((topic, idx) => (
-            <div key={idx} className="topic-card enhanced" onClick={() => setViewCategory(topic.title)}>
-              {/* Popular badge for Certificates (index 2) */}
-              {topic.title === 'Certificates' && (
-                <span className="popular-badge">⭐ Popular</span>
-              )}
-              <div className={`topic-icon-wrapper color-${idx % 6}`}>
-                {topic.icon}
-              </div>
-              <div className="topic-info">
-                <h3>{topic.title}</h3>
-                <p>{topic.desc}</p>
-                <div className="topic-meta">
-                  <span className="article-count-badge">{topic.count || 0} {topic.count === 1 ? 'article' : 'articles'}</span>
-                  <ArrowRight className="topic-arrow" size={20} />
+          {topics.map((topic, idx) => {
+            const colors = getCategoryColors(topic.title);
+            return (
+              <div key={idx} className="topic-card enhanced-gradient" onClick={() => setViewCategory(topic.title)}>
+                {/* Popular badge for Certificates */}
+                {topic.title === 'Certificates' && (
+                  <span className="popular-badge">⭐ Popular</span>
+                )}
+                
+                {/* Layer 1: Full card pastel blob */}
+                <div className={`topic-card-bg ${colors.bgColor}`}></div>
+                
+                {/* Layer 2: Icon glow halo */}
+                <div className="topic-icon-glow"></div>
+                
+                {/* Layer 3: Icon pill with gradient */}
+                <div className="topic-icon-wrapper-gradient" style={{ background: `linear-gradient(135deg, ${colors.iconColor}, ${colors.iconColor}dd)` }}>
+                  <div className="topic-icon-inner">
+                    {topic.icon}
+                  </div>
+                </div>
+                
+                <div className="topic-info">
+                  <h3>{topic.title}</h3>
+                  <p>{topic.desc}</p>
+                  <div className="topic-meta">
+                    <span className="article-count-badge">{topic.count || 0} {topic.count === 1 ? 'article' : 'articles'}</span>
+                    <ArrowRight className="topic-arrow" size={20} />
+                  </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
+
+        <section className="personal-assistance-section">
+          <div className="cosmic-bg"></div>
+          <div className="max-w-4xl mx-auto">
+            <div className="section-header">
+              <h2 className="section-title">Need Personal Assistance?</h2>
+              <p className="section-subtitle">Choose the best way to get in touch with our expert support team</p>
             </div>
-          ))}
-        </div>
-
-        <div className="section-header" style={{marginTop: '2rem'}}>
-          <h2 className="section-title">Need Personal Assistance?</h2>
-          <p className="section-subtitle">Choose the best way to get in touch with our expert support team</p>
-        </div>
-
-        <div className="cta-section">
-          {/* Chat CTA */}
-          <div className="unified-cta-card">
-            <div className="cta-content-wrapper">
-              <span className="unified-recommended">RECOMMENDED</span>
-              <div className="unified-icon-wrapper">
-                <MessageCircle size={24} />
+            <div className="assistance-cards-grid">
+              {/* Chat with Dev Card */}
+              <div className="assistance-card chat-card">
+                <div className="card-accent-bar blue"></div>
+                <span className="recommended-badge-new">RECOMMENDED</span>
+                <div className="assistance-icon-wrapper blue">
+                  <MessageCircle size={24} />
+                </div>
+                <h3>Still need help?</h3>
+                <p>Get instant help from Dev, our AI assistant.</p>
+                <p className="availability-text">
+                  <Clock size={16} className="inline-clock" />
+                  7 AM – 11 PM IST
+                </p>
+                <button className="assistance-cta-btn blue" onClick={() => setShowModal(true)}>
+                  <MessageCircle size={20} />
+                  Chat with Dev
+                </button>
               </div>
-              <h3>Still need help?</h3>
-              <p>Get instant help from Dev, our AI assistant.</p>
-              <p className="availability-text">7 AM – 11 PM IST</p>
-            </div>
-            <button className="chat-support-btn unified-primary-btn" onClick={() => setShowModal(true)}>
-              <MessageCircle size={16} />
-              Chat with Dev
-            </button>
-          </div>
 
-          {/* Escalation CTA */}
-          <div className="unified-cta-card">
-            <div className="cta-content-wrapper">
-              <div className="unified-icon-wrapper">
-                <Mail size={24} />
+              {/* Raise an Escalation Card */}
+              <div className="assistance-card escalation-card">
+                <div className="card-accent-bar amber"></div>
+                <div className="assistance-icon-wrapper amber">
+                  <Mail size={24} />
+                </div>
+                <h3>Not satisfied with the resolution?</h3>
+                <p>Not resolved? Raise an escalation after 24 hours.</p>
+                <p className="availability-text">
+                  <Clock size={16} className="inline-clock" />
+                  Mon–Fri, 11 AM – 8 PM IST
+                </p>
+                <div className="warning-box">
+                  ⚠️ Reach out to support first. Escalate only after 24 hours if unsatisfied.
+                </div>
+                <button className="assistance-cta-btn amber" onClick={() => { setShowEscalationModal(true); setEscalationStep('guidance'); }}>
+                  <Mail size={20} />
+                  Raise an Escalation
+                </button>
               </div>
-              <h3>Not satisfied with the resolution?</h3>
-              <p>Not resolved? Raise an escalation after 24 hours.</p>
-              <p className="availability-text">Mon–Fri, 11 AM – 8 PM IST</p>
             </div>
-            <button className="chat-support-btn unified-primary-btn" onClick={() => { setShowEscalationModal(true); setEscalationStep('guidance'); }}>
-              <Mail size={16} />
-              Raise an Escalation
-            </button>
           </div>
-        </div>
+        </section>
       </main>
 
       {/* Existing Chatbot Modal */}
