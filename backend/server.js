@@ -299,6 +299,17 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  const path = require('path');
+  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+  
+  // Handle SPA routing - serve index.html for all non-API routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+  });
+}
+
 const server = app.listen(port, () => {
   console.log(`Backend server running on port ${port}`);
 });
