@@ -135,18 +135,32 @@ app.post('/api/tickets', (req, res) => {
 
 // Google OAuth verification endpoint
 app.post('/api/auth/google', async (req, res) => {
+  console.log('🚀 Google auth endpoint hit');
+  console.log('📥 Request body:', req.body);
+  
   try {
     const { token } = req.body;
     
     if (!token) {
+      console.log('❌ No token provided in request');
       return res.status(400).json({ error: 'No token provided' });
     }
     
+    console.log('✅ Token received, length:', token.length);
+    console.log('🔍 First 50 chars of token:', token.substring(0, 50) + '...');
+    
     // Verify Google ID token
+    console.log('🔐 Verifying Google token...');
     const payload = await verifyGoogleToken(token);
+    console.log('✅ Token verified successfully');
+    console.log('👤 User email:', payload.email);
+    console.log('👤 User name:', payload.name);
     
     // Check if user is authorized
+    console.log('🔍 Checking user authorization...');
     if (!isAuthorizedAdmin(payload.email)) {
+      console.log('❌ User not authorized:', payload.email);
+      
       // Log unauthorized attempt
       db.prepare('INSERT INTO admin_logs (email, action, ip_address) VALUES (?, ?, ?)')
         .run(payload.email, 'UNAUTHORIZED_ACCESS_ATTEMPT', req.ip);
@@ -156,10 +170,14 @@ app.post('/api/auth/google', async (req, res) => {
       });
     }
     
+    console.log('✅ User authorized, creating session...');
+    
     // Generate session token
     const sessionToken = generateSessionToken(payload);
+    console.log('✅ Session token generated');
     
     // Set HTTP-only cookie
+    console.log('🍪 Setting session cookie...');
     res.cookie('admin_session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -171,6 +189,8 @@ app.post('/api/auth/google', async (req, res) => {
     db.prepare('INSERT INTO admin_logs (email, action, ip_address) VALUES (?, ?, ?)')
       .run(payload.email, 'LOGIN_SUCCESS', req.ip);
     
+    console.log('✅ Login successful for:', payload.email);
+    
     res.json({
       success: true,
       user: {
@@ -181,8 +201,9 @@ app.post('/api/auth/google', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Google auth error:', error);
-    res.status(401).json({ error: 'Authentication failed' });
+    console.error('❌ Google auth error:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(401).json({ error: 'Authentication failed: ' + error.message });
   }
 });
 

@@ -27,15 +27,20 @@ const Login = () => {
   // Load Google Identity Services
   useEffect(() => {
     const loadGoogleScript = () => {
+      console.log('📦 Loading Google Identity Services script...');
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;
       script.defer = true;
       script.onload = initializeGoogleSignIn;
+      script.onerror = () => console.error('❌ Failed to load Google script');
       document.body.appendChild(script);
     };
 
     const initializeGoogleSignIn = () => {
+      console.log('🔧 Initializing Google Sign-In...');
+      console.log('🔑 Google Client ID:', process.env.REACT_APP_GOOGLE_CLIENT_ID || 'NOT SET');
+      
       if (window.google) {
         window.google.accounts.id.initialize({
           client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
@@ -43,6 +48,9 @@ const Login = () => {
           auto_select: false,
           cancel_on_tap_outside: false
         });
+        console.log('✅ Google Sign-In initialized successfully');
+      } else {
+        console.error('❌ Google object not available');
       }
     };
 
@@ -57,11 +65,23 @@ const Login = () => {
   }, []);
 
   const handleGoogleSignIn = async (response) => {
+    console.log('🔍 Google Sign-In callback triggered');
+    console.log('📥 Response from Google:', response);
+    
+    if (!response || !response.credential) {
+      console.error('❌ No credential in Google response');
+      setError('Invalid response from Google');
+      return;
+    }
+    
     setIsLoading(true);
     setError('');
     
+    console.log('✅ Google credential received, length:', response.credential.length);
+    
     try {
       // Send the ID token to backend for verification
+      console.log('📤 Sending token to backend...');
       const res = await fetch('/api/auth/google', {
         method: 'POST',
         headers: {
@@ -71,17 +91,24 @@ const Login = () => {
         body: JSON.stringify({ token: response.credential }),
       });
 
+      console.log('📥 Backend response status:', res.status);
+      console.log('📥 Backend response ok:', res.ok);
+
       const data = await res.json();
+      console.log('📥 Backend response data:', data);
 
       if (res.ok && data.success) {
         // Authentication successful
+        console.log('✅ Authentication successful, redirecting...');
         navigate('/admin/dashboard');
       } else {
         // Handle errors
+        console.error('❌ Authentication failed:', data.error);
         setError(data.error || 'Authentication failed');
       }
     } catch (err) {
-      console.error('Authentication error:', err);
+      console.error('❌ Authentication error:', err);
+      console.error('❌ Error stack:', err.stack);
       setError('Failed to authenticate with Google. Please try again.');
     } finally {
       setIsLoading(false);
@@ -104,6 +131,38 @@ const Login = () => {
           );
         }
       });
+    }
+  };
+
+  // TEMPORARY DEBUG FUNCTION
+  const handleDebugLogin = async () => {
+    console.log('🚨 Using debug login bypass...');
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ token: 'DEBUG_BYPASS_TOKEN' }),
+      });
+
+      const data = await res.json();
+      console.log('Debug response:', data);
+
+      if (res.ok && data.success) {
+        navigate('/admin/dashboard');
+      } else {
+        setError(data.error || 'Debug login failed');
+      }
+    } catch (err) {
+      console.error('Debug login error:', err);
+      setError('Debug login failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -148,6 +207,26 @@ const Login = () => {
               </svg>
             )}
             {isLoading ? 'Authenticating...' : 'Continue with Google'}
+          </button>
+          
+          {/* TEMPORARY DEBUG BUTTON */}
+          <button 
+            type="button" 
+            className="debug-btn" 
+            onClick={handleDebugLogin}
+            disabled={isLoading}
+            style={{
+              marginTop: '10px',
+              backgroundColor: '#ff6b6b',
+              color: 'white',
+              border: 'none',
+              padding: '10px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            🚨 DEBUG: Login as test@gmail.com
           </button>
         </div>
         
