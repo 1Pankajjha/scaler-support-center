@@ -1490,43 +1490,68 @@
   letter-spacing: 0.01em;
 }
 
-/* Footer */
+/* ============================================
+   FOOTER - COMPACT REDESIGN
+   ============================================ */
+
 .main-footer {
-  background-color: #1a1f36;
-  color: #94a3b8;
-  padding: 2rem 2.5rem;
-  margin-top: auto;
+  background: #1F2937;
+  padding: 1rem 2rem;
+  min-height: auto;
+  border-top: 1px solid #374151;
 }
 
 .footer-content {
-  max-width: 1200px;
-  margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.footer-left {
+  flex: 1;
 }
 
 .footer-left p {
+  color: #9CA3AF;
+  font-size: 0.875rem;
   margin: 0;
-  font-size: 0.9rem;
 }
 
 .footer-right {
   display: flex;
-  gap: 2rem;
+  gap: 1.5rem;
+  align-items: center;
 }
 
 .footer-link {
-  color: #94a3b8;
+  color: #9CA3AF;
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   transition: color 0.2s ease;
 }
 
 .footer-link:hover {
-  color: #cbd5e1;
+  color: #F3F4F6;
+  text-decoration: underline;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .main-footer {
+    padding: 1rem;
+  }
+  
+  .footer-content {
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+  }
+  
+  .footer-right {
+    gap: 1rem;
+  }
 }
 
 /* ============================================
