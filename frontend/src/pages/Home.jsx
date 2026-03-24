@@ -444,10 +444,10 @@ const Home = () => {
                   <MessageCircle size={24} />
                 </div>
                 <h3>Still need help?</h3>
-                <p>Get instant help from Dev, our AI assistant.</p>
-                <p className="availability-text">
+                <p className="dev-availability">Dev is available 24×7, 7 days a week to handle most of your queries.</p>
+                <p className="support-availability">
                   <Clock size={16} className="inline-clock" />
-                  7 AM – 11 PM IST
+                  For additional support, our support team is available from 7 AM to 11 PM IST, 7 days a week.
                 </p>
                 <button className="assistance-cta-btn blue" onClick={() => setShowModal(true)}>
                   <MessageCircle size={20} />
