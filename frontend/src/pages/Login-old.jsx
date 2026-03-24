@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/Login.css';
 
@@ -7,103 +7,33 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Check if already logged in
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/me', {
-          credentials: 'include'
-        });
-        if (response.ok) {
-          navigate('/admin/dashboard');
-        }
-      } catch (error) {
-        // Not logged in, continue
-      }
-    };
-    checkAuth();
-  }, [navigate]);
-
-  // Load Google Identity Services
-  useEffect(() => {
-    const loadGoogleScript = () => {
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = initializeGoogleSignIn;
-      document.body.appendChild(script);
-    };
-
-    const initializeGoogleSignIn = () => {
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
-          callback: handleGoogleSignIn,
-          auto_select: false,
-          cancel_on_tap_outside: false
-        });
-      }
-    };
-
-    loadGoogleScript();
-
-    return () => {
-      const script = document.querySelector('script[src*="accounts.google.com/gsi/client"]');
-      if (script) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
-
-  const handleGoogleSignIn = async (response) => {
+  const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError('');
     
     try {
-      // Send the ID token to backend for verification
-      const res = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ token: response.credential }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        // Authentication successful
-        navigate('/admin/dashboard');
-      } else {
-        // Handle errors
-        setError(data.error || 'Authentication failed');
+      // For now, use mock OAuth - in production, this would be real Google OAuth
+      // Simulate OAuth flow delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mock successful OAuth with scaler.com domain
+      const mockEmail = 'admin@scaler.com'; // In real OAuth, this comes from Google
+      
+      if (!mockEmail.endsWith('@scaler.com')) {
+        setError('Access restricted to @scaler.com accounts only.');
+        return;
       }
+      
+      // Store session
+      localStorage.setItem('admin_token', 'oauth_token_' + Date.now());
+      localStorage.setItem('admin_email', mockEmail);
+      localStorage.setItem('admin_name', 'Scaler Admin');
+      
+      navigate('/admin/dashboard');
     } catch (err) {
-      console.error('Authentication error:', err);
-      setError('Failed to authenticate with Google. Please try again.');
+      setError('Failed to sign in with Google. Please try again.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = () => {
-    if (window.google && window.google.accounts.id) {
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // Fallback to popup if prompt is not displayed
-          window.google.accounts.id.renderButton(
-            document.getElementById('google-signin-button'),
-            {
-              theme: 'outline',
-              size: 'large',
-              text: 'continue_with',
-              width: '100%'
-            }
-          );
-        }
-      });
     }
   };
 
@@ -127,9 +57,7 @@ const Login = () => {
         </div>
         
         <div className="login-form">
-          {error && <div className="error-message">👉 {error}</div>}
-          
-          <div id="google-signin-button"></div>
+          {error && <div className="error-message">{error}</div>}
           
           <button 
             type="button" 
@@ -147,7 +75,7 @@ const Login = () => {
                 <path d="M9 3.78182C10.5682 3.78182 11.9818 4.33364 13.0909 5.41818L15.5864 2.92273C13.4636 0.894545 11.43 0 9 0C6.08591 0 2.65227 1.70455 1.04545 4.93636L3.96409 7.18909C4.67318 5.06273 6.65591 3.78182 9 3.78182Z" fill="#EA4335"/>
               </svg>
             )}
-            {isLoading ? 'Authenticating...' : 'Continue with Google'}
+            {isLoading ? 'Signing in...' : 'Continue with Google'}
           </button>
         </div>
         

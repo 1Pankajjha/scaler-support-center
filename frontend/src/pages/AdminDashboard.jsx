@@ -42,14 +42,30 @@ const AdminDashboard = () => {
   const [topicSaveSuccess, setTopicSaveSuccess] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    if (!token) navigate('/admin/login');
-    else {
-      fetchArticles();
-      fetchInsights();
-      fetchPopularTopics();
-    }
-  }, [navigate]);
+    const checkAuth = async () => {
+      try {
+        const response = await fetch(`${API_URL}/auth/me`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          navigate('/admin/login');
+          return;
+        }
+        
+        const data = await response.json();
+        // User is authenticated, proceed with fetching data
+        fetchArticles();
+        fetchInsights();
+        fetchPopularTopics();
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        navigate('/admin/login');
+      }
+    };
+    
+    checkAuth();
+  }, [navigate, API_URL]);
 
   const fetchPopularTopics = async () => {
     console.log('=== ADMIN DASHBOARD: fetchPopularTopics ===');
@@ -123,10 +139,18 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_email');
-    navigate('/admin/login');
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      navigate('/admin/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Still navigate even if logout fails
+      navigate('/admin/login');
+    }
   };
 
   const handleOpenModal = (article = null) => {
