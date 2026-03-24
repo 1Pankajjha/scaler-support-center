@@ -193,15 +193,68 @@ const Home = () => {
     }));
   };
 
+  const validateTicketId = (ticketId) => {
+    // Auto-trim spaces
+    const trimmedId = ticketId.trim();
+    
+    // Check if empty
+    if (!trimmedId) {
+      return 'Enter a 12-digit support ID or contact support team.';
+    }
+    
+    // Check if numeric
+    if (!/^\d+$/.test(trimmedId)) {
+      return 'Enter a 12-digit support ID or contact support team.';
+    }
+    
+    // Check if exactly 12 digits
+    if (trimmedId.length !== 12) {
+      return 'Enter a 12-digit support ID or contact support team.';
+    }
+    
+    return ''; // No error
+  };
+
+  const handleTicketIdChange = (e) => {
+    const value = e.target.value;
+    
+    // Prevent non-numeric typing (optional enhancement)
+    const numericValue = value.replace(/\D/g, '');
+    if (value !== numericValue) {
+      e.target.value = numericValue;
+    }
+    
+    setTicketIdInput(numericValue);
+    
+    // Clear error if user is typing
+    if (ticketIdError) {
+      setTicketIdError('');
+    }
+  };
+
+  const handleTicketIdBlur = () => {
+    const error = validateTicketId(ticketIdInput);
+    setTicketIdError(error);
+  };
+
   const isChecklistComplete = () => {
+    const ticketError = validateTicketId(ticketIdInput);
     return checklistItems.contactedSupport && 
            checklistItems.unresolved24Hours && 
            checklistItems.hasTicketId &&
-           ticketIdInput.trim();
+           !ticketError &&
+           ticketIdInput.trim().length > 0;
   };
 
   const proceedToEscalationForm = () => {
-    setEscalationData({ ...escalationData, ticketId: ticketIdInput });
+    // Validate ticket ID before proceeding
+    const error = validateTicketId(ticketIdInput);
+    if (error) {
+      setTicketIdError(error);
+      return;
+    }
+    
+    setEscalationData({ ...escalationData, ticketId: ticketIdInput.trim() });
     setEscalationStep('form');
   };
 
@@ -762,12 +815,11 @@ const Home = () => {
                     placeholder="Enter your ticket ID"
                     className={`ticket-input ${ticketIdError ? 'error' : ''}`}
                     value={ticketIdInput}
-                    onChange={(e) => {
-                      setTicketIdInput(e.target.value);
-                      if (ticketIdError) setTicketIdError('');
-                    }}
+                    onChange={handleTicketIdChange}
+                    onBlur={handleTicketIdBlur}
+                    maxLength={12}
                   />
-                  {ticketIdError && <span className="error-text">{ticketIdError}</span>}
+                  {ticketIdError && <span className="error-text">👉 {ticketIdError}</span>}
                 </div>
                 
                 <div className="escalation-actions">
