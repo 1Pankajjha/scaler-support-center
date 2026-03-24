@@ -465,7 +465,7 @@ const Home = () => {
                 <p>Not resolved? Raise an escalation after 24 hours.</p>
                 <p className="availability-text">
                   <Clock size={16} className="inline-clock" />
-                  Support: 7 AM - 11 PM IST
+                  Mon–Fri, 11 AM – 8 PM IST
                 </p>
                 <div className="warning-box">
                   ⚠️ Reach out to support first. Escalate only after 24 hours if unsatisfied.
