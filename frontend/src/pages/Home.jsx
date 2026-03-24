@@ -48,6 +48,15 @@ const Home = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const chatInputRef = useRef(null);
   const chatTriggerRef = useRef(null);
+  
+  // Escalation modal state
+  const [checklistItems, setChecklistItems] = useState({
+    contactedSupport: false,
+    unresolved24Hours: false,
+    hasTicketId: false
+  });
+  const [ticketIdInput, setTicketIdInput] = useState('');
+  const [ticketIdError, setTicketIdError] = useState('');
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -168,6 +177,32 @@ const Home = () => {
     setEscalationErrors({ ticketId: '', email: '', description: '' });
     setAttachedFiles([]);
     setIsSubmitting(false);
+    setChecklistItems({
+      contactedSupport: false,
+      unresolved24Hours: false,
+      hasTicketId: false
+    });
+    setTicketIdInput('');
+    setTicketIdError('');
+  };
+
+  const handleChecklistChange = (item) => {
+    setChecklistItems(prev => ({
+      ...prev,
+      [item]: !prev[item]
+    }));
+  };
+
+  const isChecklistComplete = () => {
+    return checklistItems.contactedSupport && 
+           checklistItems.unresolved24Hours && 
+           checklistItems.hasTicketId &&
+           ticketIdInput.trim();
+  };
+
+  const proceedToEscalationForm = () => {
+    setEscalationData({ ...escalationData, ticketId: ticketIdInput });
+    setEscalationStep('form');
   };
 
   const handleDragOver = (e) => {
@@ -656,21 +691,101 @@ const Home = () => {
             
             {escalationStep === 'guidance' && (
               <>
-                <div className="esc-header">
-                  <AlertCircle size={28} color="#2563eb" />
-                  <h2>Before you raise an escalation</h2>
+                <div className="escalation-header">
+                  <h2>Quick check before escalating</h2>
+                  <p>Make sure you've completed these steps:</p>
                 </div>
-                <div className="esc-guidance-box">
-                  <p>Please ensure the following criteria are met before proceeding:</p>
-                  <ul>
-                    <li>You have already reached out to the support team.</li>
-                    <li>Your issue is unresolved for <strong>more than 24 hours</strong> or you received an unsatisfactory response.</li>
-                    <li>You have your <strong>support ticket ID</strong> ready (you can refer to your email to find the ticket ID).</li>
-                  </ul>
+                
+                <div className="checklist-section">
+                  <div className="checklist-item">
+                    <label className="checkbox-label">
+                      <input 
+                        type="checkbox" 
+                        checked={checklistItems.contactedSupport}
+                        onChange={() => handleChecklistChange('contactedSupport')}
+                      />
+                      <span className="checkmark">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </span>
+                      <span className="checkbox-text">
+                        <span className="icon">💬</span>
+                        I've already contacted the support team
+                      </span>
+                    </label>
+                  </div>
+                  
+                  <div className="checklist-item">
+                    <label className="checkbox-label">
+                      <input 
+                        type="checkbox" 
+                        checked={checklistItems.unresolved24Hours}
+                        onChange={() => handleChecklistChange('unresolved24Hours')}
+                      />
+                      <span className="checkmark">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </span>
+                      <span className="checkbox-text">
+                        <span className="icon">⏱️</span>
+                        My issue is unresolved for 24+ hours or response was unsatisfactory
+                      </span>
+                    </label>
+                  </div>
+                  
+                  <div className="checklist-item">
+                    <label className="checkbox-label">
+                      <input 
+                        type="checkbox" 
+                        checked={checklistItems.hasTicketId}
+                        onChange={() => handleChecklistChange('hasTicketId')}
+                      />
+                      <span className="checkmark">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </span>
+                      <span className="checkbox-text">
+                        <span className="icon">🎫</span>
+                        I have my support ticket ID
+                      </span>
+                    </label>
+                  </div>
                 </div>
-                <div className="esc-actions">
-                  <button className="secondary-btn" onClick={() => { setShowEscalationModal(false); resetEscalationForm(); }}>Go Back</button>
-                  <button className="primary-btn" onClick={() => setEscalationStep('form')}>Continue to Escalation</button>
+                
+                <div className="ticket-input-section">
+                  <label className="ticket-label">Support Ticket ID</label>
+                  <input 
+                    type="text" 
+                    placeholder="Enter your ticket ID"
+                    className={`ticket-input ${ticketIdError ? 'error' : ''}`}
+                    value={ticketIdInput}
+                    onChange={(e) => {
+                      setTicketIdInput(e.target.value);
+                      if (ticketIdError) setTicketIdError('');
+                    }}
+                  />
+                  {ticketIdError && <span className="error-text">{ticketIdError}</span>}
+                </div>
+                
+                <div className="escalation-actions">
+                  <button className="secondary-btn" onClick={() => { 
+                    setShowEscalationModal(false); 
+                    resetEscalationForm(); 
+                  }}>Go Back</button>
+                  <button 
+                    className={`primary-btn ${isChecklistComplete() ? 'enabled' : 'disabled'}`}
+                    onClick={proceedToEscalationForm}
+                    disabled={!isChecklistComplete()}
+                  >
+                    Raise Escalation
+                  </button>
+                </div>
+                
+                <div className="support-link">
+                  Still need help? <a href="#" onClick={(e) => { e.preventDefault(); setShowModal(true); }}>Contact support again</a>
                 </div>
               </>
             )}
