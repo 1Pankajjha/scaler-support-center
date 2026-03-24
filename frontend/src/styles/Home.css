@@ -2125,9 +2125,6 @@ COLOR PALETTES USED:
   font-size: 0.8125rem;
   line-height: 1.5;
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 /* Enhanced warning box */

@@ -446,7 +446,6 @@ const Home = () => {
                 <h3>Still need help?</h3>
                 <p className="dev-availability">Dev is available 24×7, 7 days a week to handle most of your queries.</p>
                 <p className="support-availability">
-                  <Clock size={16} className="inline-clock" />
                   For additional support, our support team is available from 7 AM to 11 PM IST, 7 days a week.
                 </p>
                 <button className="assistance-cta-btn blue" onClick={() => setShowModal(true)}>
