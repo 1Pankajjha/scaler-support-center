@@ -608,99 +608,100 @@ const Home = () => {
                   <h2>Escalation Form</h2>
                   <p>Provide your details to escalate the issue.</p>
                 </div>
-                <form className="esc-form" onSubmit={handleEscalationSubmit}>
-                  <div className="form-group">
-                    <label>Support Ticket ID <span className="required-asterisk">*</span></label>
-                    <input 
-                      type="text" 
-                      placeholder="Enter your ticket ID" 
-                      className={escalationErrors.ticketId ? 'input-error' : ''}
-                      value={escalationData.ticketId}
-                      onChange={(e) => {
-                        setEscalationData({...escalationData, ticketId: e.target.value});
-                        if (escalationErrors.ticketId) setEscalationErrors({...escalationErrors, ticketId: ''});
-                      }}
-                    />
-                    {escalationErrors.ticketId && <span className="field-error">{escalationErrors.ticketId}</span>}
-                  </div>
-                  <div className="form-group">
-                    <label>Email ID <span className="required-asterisk">*</span></label>
-                    <input 
-                      type="email" 
-                      placeholder="Enter your email ID" 
-                      className={escalationErrors.email ? 'input-error' : ''}
-                      value={escalationData.email}
-                      onChange={(e) => {
-                        setEscalationData({...escalationData, email: e.target.value});
-                        if (escalationErrors.email) setEscalationErrors({...escalationErrors, email: ''});
-                      }}
-                    />
-                    {escalationErrors.email && <span className="field-error">{escalationErrors.email}</span>}
-                  </div>
-                  <div className="form-group">
-                    <label>Issue Description <span className="required-asterisk">*</span></label>
-                    <textarea 
-                      placeholder="Describe your issue in detail" 
-                      rows="4"
-                      className={escalationErrors.description ? 'input-error' : ''}
-                      value={escalationData.description}
-                      onChange={(e) => {
-                        setEscalationData({...escalationData, description: e.target.value});
-                        if (escalationErrors.description) setEscalationErrors({...escalationErrors, description: ''});
-                      }}
-                    ></textarea>
-                    {escalationErrors.description && <span className="field-error">{escalationErrors.description}</span>}
-                  </div>
-                  <div className="form-group">
-                    <label>Attach Files (Optional)</label>
-                    <div className="file-upload-container">
+                <div className="esc-form-container">
+                  <form className="esc-form" onSubmit={handleEscalationSubmit}>
+                    <div className="form-group">
+                      <label>Support Ticket ID <span className="required-asterisk">*</span></label>
                       <input 
-                        type="file" 
-                        id="file-upload" 
-                        multiple
-                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-                        onChange={handleFileChange}
-                        style={{ display: 'none' }}
+                        type="text" 
+                        placeholder="Enter your ticket ID" 
+                        className={escalationErrors.ticketId ? 'input-error' : ''}
+                        value={escalationData.ticketId}
+                        onChange={(e) => {
+                          setEscalationData({...escalationData, ticketId: e.target.value});
+                          if (escalationErrors.ticketId) setEscalationErrors({...escalationErrors, ticketId: ''});
+                        }}
                       />
-                      <label htmlFor="file-upload" className="file-upload-label" onDragOver={handleDragOver} onDrop={handleDrop}>
-                        <div className="file-upload-icon">📎</div>
-                        <span>Choose files or drag and drop</span>
-                        <small>JPG, PNG, PDF, DOC, DOCX (Max 5MB per file)</small>
-                      </label>
+                      {escalationErrors.ticketId && <span className="field-error">{escalationErrors.ticketId}</span>}
                     </div>
-                    {attachedFiles.length > 0 && (
-                      <div className="attached-files-list">
-                        {attachedFiles.map((file, index) => (
-                          <div key={index} className="attached-file-item">
-                            <span className="file-name">{file.name}</span>
-                            <span className="file-size">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-                            <button 
-                              type="button" 
-                              className="remove-file-btn"
-                              onClick={() => removeFile(index)}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
+                    <div className="form-group">
+                      <label>Email ID <span className="required-asterisk">*</span></label>
+                      <input 
+                        type="email" 
+                        placeholder="Enter your email ID" 
+                        className={escalationErrors.email ? 'input-error' : ''}
+                        value={escalationData.email}
+                        onChange={(e) => {
+                          setEscalationData({...escalationData, email: e.target.value});
+                          if (escalationErrors.email) setEscalationErrors({...escalationErrors, email: ''});
+                        }}
+                      />
+                      {escalationErrors.email && <span className="field-error">{escalationErrors.email}</span>}
+                    </div>
+                    <div className="form-group full-width">
+                      <label>Issue Description <span className="required-asterisk">*</span></label>
+                      <textarea 
+                        placeholder="Describe your issue in detail" 
+                        rows="3"
+                        className={escalationErrors.description ? 'input-error' : ''}
+                        value={escalationData.description}
+                        onChange={(e) => {
+                          setEscalationData({...escalationData, description: e.target.value});
+                          if (escalationErrors.description) setEscalationErrors({...escalationErrors, description: ''});
+                        }}
+                      ></textarea>
+                      {escalationErrors.description && <span className="field-error">{escalationErrors.description}</span>}
+                    </div>
+                    <div className="form-group full-width">
+                      <label>Attach Files (Optional)</label>
+                      <div className="file-upload-container">
+                        <input 
+                          type="file" 
+                          id="file-upload" 
+                          multiple
+                          accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                          onChange={handleFileChange}
+                          style={{ display: 'none' }}
+                        />
+                        <label htmlFor="file-upload" className="file-upload-label" onDragOver={handleDragOver} onDrop={handleDrop}>
+                          <div className="file-upload-icon">📎</div>
+                          <span>Choose files or drag and drop</span>
+                          <small>JPG, PNG, PDF, DOC, DOCX (Max 5MB per file)</small>
+                        </label>
                       </div>
-                    )}
-                  </div>
-                  
-                  <div className="esc-actions">
-                    <button type="button" className="secondary-btn" onClick={() => setEscalationStep('guidance')}>Back</button>
-                    <button type="submit" className="primary-btn" disabled={isSubmitting}>
-                      {isSubmitting ? (
-                        <>
-                          <span className="loading-spinner"></span>
-                          Submitting...
-                        </>
-                      ) : (
-                        'Submit Escalation'
+                      {attachedFiles.length > 0 && (
+                        <div className="attached-files-list">
+                          {attachedFiles.map((file, index) => (
+                            <div key={index} className="attached-file-item">
+                              <span className="file-name">{file.name}</span>
+                              <span className="file-size">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                              <button 
+                                type="button" 
+                                className="remove-file-btn"
+                                onClick={() => removeFile(index)}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                    </button>
-                  </div>
-                </form>
+                    </div>
+                  </form>
+                </div>
+                <div className="esc-actions">
+                  <button type="button" className="secondary-btn" onClick={() => setEscalationStep('guidance')}>Back</button>
+                  <button type="submit" className="primary-btn" disabled={isSubmitting} onClick={handleEscalationSubmit}>
+                    {isSubmitting ? (
+                      <>
+                        <span className="loading-spinner"></span>
+                        Submitting...
+                      </>
+                    ) : (
+                      'Submit Escalation'
+                    )}
+                  </button>
+                </div>
               </>
             )}
 
