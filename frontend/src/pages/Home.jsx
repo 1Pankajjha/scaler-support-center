@@ -42,16 +42,37 @@ const Home = () => {
   
   const [showEscalationModal, setShowEscalationModal] = useState(false);
   const [escalationStep, setEscalationStep] = useState('guidance'); // 'guidance', 'form', 'success'
-  const [escalationData, setEscalationData] = useState({ ticketId: '', description: '' });
-  const [escalationErrors, setEscalationErrors] = useState({ ticketId: '', description: '' });
+  const [escalationData, setEscalationData] = useState({ ticketId: '', email: '', description: '' });
+  const [escalationErrors, setEscalationErrors] = useState({ ticketId: '', email: '', description: '' });
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && showEscalationModal) {
+        setShowEscalationModal(false);
+        resetEscalationForm();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showEscalationModal]);
 
   const handleEscalationSubmit = (e) => {
     e.preventDefault();
-    let errors = { ticketId: '', description: '' };
+    let errors = { ticketId: '', email: '', description: '' };
     let hasError = false;
 
     if (!escalationData.ticketId.trim()) {
       errors.ticketId = 'Support Ticket ID is required';
+      hasError = true;
+    }
+    if (!escalationData.email.trim()) {
+      errors.email = 'Please enter a valid email ID';
+      hasError = true;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(escalationData.email)) {
+      errors.email = 'Please enter a valid email ID';
       hasError = true;
     }
     if (!escalationData.description.trim()) {
@@ -64,11 +85,74 @@ const Home = () => {
       return;
     }
 
-    setEscalationErrors({ ticketId: '', description: '' });
+    setEscalationErrors({ ticketId: '', email: '', description: '' });
+    setIsSubmitting(true);
+    
     // Mock submission API delay
     setTimeout(() => {
       setEscalationStep('success');
-    }, 600);
+    }, 1500);
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    const validFiles = [];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
+    files.forEach(file => {
+      if (file.size > maxSize) {
+        alert(`File ${file.name} exceeds 5MB limit`);
+        return;
+      }
+      if (!allowedTypes.includes(file.type)) {
+        alert(`File ${file.name} is not a supported format`);
+        return;
+      }
+      validFiles.push(file);
+    });
+
+    setAttachedFiles(prev => [...prev, ...validFiles]);
+  };
+
+  const removeFile = (index) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const resetEscalationForm = () => {
+    setEscalationStep('guidance');
+    setEscalationData({ ticketId: '', email: '', description: '' });
+    setEscalationErrors({ ticketId: '', email: '', description: '' });
+    setAttachedFiles([]);
+    setIsSubmitting(false);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = Array.from(e.dataTransfer.files);
+    const validFiles = [];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
+    files.forEach(file => {
+      if (file.size > maxSize) {
+        alert(`File ${file.name} exceeds 5MB limit`);
+        return;
+      }
+      if (!allowedTypes.includes(file.type)) {
+        alert(`File ${file.name} is not a supported format`);
+        return;
+      }
+      validFiles.push(file);
+    });
+
+    setAttachedFiles(prev => [...prev, ...validFiles]);
   };
 
   useEffect(() => {
@@ -494,7 +578,7 @@ const Home = () => {
 
       {/* Escalation Modal Flow */}
       {showEscalationModal && (
-        <div className="modal-overlay" onClick={() => setShowEscalationModal(false)}>
+        <div className="modal-overlay" onClick={() => { setShowEscalationModal(false); resetEscalationForm(); }}>
           <div className="modal-content escalation-modal" onClick={e => e.stopPropagation()}>
             
             {escalationStep === 'guidance' && (
@@ -512,7 +596,7 @@ const Home = () => {
                   </ul>
                 </div>
                 <div className="esc-actions">
-                  <button className="secondary-btn" onClick={() => setShowEscalationModal(false)}>Go Back</button>
+                  <button className="secondary-btn" onClick={() => { setShowEscalationModal(false); resetEscalationForm(); }}>Go Back</button>
                   <button className="primary-btn" onClick={() => setEscalationStep('form')}>Continue to Escalation</button>
                 </div>
               </>
@@ -540,6 +624,20 @@ const Home = () => {
                     {escalationErrors.ticketId && <span className="field-error">{escalationErrors.ticketId}</span>}
                   </div>
                   <div className="form-group">
+                    <label>Email ID <span className="required-asterisk">*</span></label>
+                    <input 
+                      type="email" 
+                      placeholder="Enter your email ID" 
+                      className={escalationErrors.email ? 'input-error' : ''}
+                      value={escalationData.email}
+                      onChange={(e) => {
+                        setEscalationData({...escalationData, email: e.target.value});
+                        if (escalationErrors.email) setEscalationErrors({...escalationErrors, email: ''});
+                      }}
+                    />
+                    {escalationErrors.email && <span className="field-error">{escalationErrors.email}</span>}
+                  </div>
+                  <div className="form-group">
                     <label>Issue Description <span className="required-asterisk">*</span></label>
                     <textarea 
                       placeholder="Describe your issue in detail" 
@@ -553,10 +651,54 @@ const Home = () => {
                     ></textarea>
                     {escalationErrors.description && <span className="field-error">{escalationErrors.description}</span>}
                   </div>
+                  <div className="form-group">
+                    <label>Attach Files (Optional)</label>
+                    <div className="file-upload-container">
+                      <input 
+                        type="file" 
+                        id="file-upload" 
+                        multiple
+                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                        onChange={handleFileChange}
+                        style={{ display: 'none' }}
+                      />
+                      <label htmlFor="file-upload" className="file-upload-label" onDragOver={handleDragOver} onDrop={handleDrop}>
+                        <div className="file-upload-icon">📎</div>
+                        <span>Choose files or drag and drop</span>
+                        <small>JPG, PNG, PDF, DOC, DOCX (Max 5MB per file)</small>
+                      </label>
+                    </div>
+                    {attachedFiles.length > 0 && (
+                      <div className="attached-files-list">
+                        {attachedFiles.map((file, index) => (
+                          <div key={index} className="attached-file-item">
+                            <span className="file-name">{file.name}</span>
+                            <span className="file-size">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                            <button 
+                              type="button" 
+                              className="remove-file-btn"
+                              onClick={() => removeFile(index)}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="esc-actions">
                     <button type="button" className="secondary-btn" onClick={() => setEscalationStep('guidance')}>Back</button>
-                    <button type="submit" className="primary-btn">Submit Escalation</button>
+                    <button type="submit" className="primary-btn" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <span className="loading-spinner"></span>
+                          Submitting...
+                        </>
+                      ) : (
+                        'Submit Escalation'
+                      )}
+                    </button>
                   </div>
                 </form>
               </>
@@ -568,7 +710,10 @@ const Home = () => {
                 <h2>Escalation Submitted</h2>
                 <p>Your escalation (Ref: ESC-{Math.floor(Math.random() * 10000) + 1000}) has been submitted successfully.</p>
                 <p className="esc-timeline">Our team will review your case and respond within 24 hours.</p>
-                <button className="primary-btn full-width" onClick={() => { setShowEscalationModal(false); setEscalationStep('guidance'); setEscalationData({ticketId:'', description:''}); }}>Done</button>
+                <button className="primary-btn full-width" onClick={() => { 
+                  setShowEscalationModal(false); 
+                  resetEscalationForm();
+                }}>Done</button>
               </div>
             )}
             
