@@ -1491,7 +1491,7 @@
 }
 
 /* ============================================
-   FOOTER - COMPACT REDESIGN
+   FOOTER - COMPACT REDESIGN (FIXED)
    ============================================ */
 
 .main-footer {
@@ -1499,6 +1499,11 @@
   padding: 1rem 2rem;
   min-height: auto;
   border-top: 1px solid #374151;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 50;
 }
 
 .footer-content {
@@ -1537,6 +1542,15 @@
   text-decoration: underline;
 }
 
+/* Add bottom padding to main content to prevent overlap */
+body {
+  padding-bottom: 60px;
+}
+
+.main-content {
+  padding-bottom: 60px;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .main-footer {
@@ -1551,6 +1565,14 @@
   
   .footer-right {
     gap: 1rem;
+  }
+  
+  body {
+    padding-bottom: 80px; /* More padding for mobile due to stacked layout */
+  }
+  
+  .main-content {
+    padding-bottom: 80px; /* More padding for mobile due to stacked layout */
   }
 }
 
