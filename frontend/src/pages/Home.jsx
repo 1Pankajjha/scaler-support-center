@@ -447,7 +447,7 @@ const Home = () => {
                 <p>Get instant help from Dev, our AI assistant.</p>
                 <p className="availability-text">
                   <Clock size={16} className="inline-clock" />
-                  7 AM – 11 PM IST
+                  Available 24×7
                 </p>
                 <button className="assistance-cta-btn blue" onClick={() => setShowModal(true)}>
                   <MessageCircle size={20} />
@@ -465,7 +465,7 @@ const Home = () => {
                 <p>Not resolved? Raise an escalation after 24 hours.</p>
                 <p className="availability-text">
                   <Clock size={16} className="inline-clock" />
-                  Mon–Fri, 11 AM – 8 PM IST
+                  Support: 7 AM - 11 PM IST
                 </p>
                 <div className="warning-box">
                   ⚠️ Reach out to support first. Escalate only after 24 hours if unsatisfied.
@@ -475,6 +475,9 @@ const Home = () => {
                   Raise an Escalation
                 </button>
               </div>
+            </div>
+            <div className="availability-info">
+              <p>Dev is available 24×7, 7 days a week to handle most of your queries. For additional support, our support team is available from 7 AM to 11 PM IST, 7 days a week.</p>
             </div>
           </div>
         </section>
