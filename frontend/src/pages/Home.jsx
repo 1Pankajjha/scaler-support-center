@@ -46,6 +46,8 @@ const Home = () => {
   const [escalationErrors, setEscalationErrors] = useState({ ticketId: '', email: '', description: '' });
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const chatInputRef = useRef(null);
+  const chatTriggerRef = useRef(null);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -58,6 +60,47 @@ const Home = () => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [showEscalationModal]);
+
+  const openChatModal = () => {
+    chatTriggerRef.current = document.activeElement;
+    setShowModal(true);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && showModal) {
+        // Check if there's unsaved input
+        if (chatInput.trim()) {
+          if (window.confirm('You have unsaved message. Are you sure you want to close the chat?')) {
+            setShowModal(false);
+            setChatInput('');
+            // Restore focus to the trigger element
+            if (chatTriggerRef.current) {
+              chatTriggerRef.current.focus();
+            }
+          }
+        } else {
+          setShowModal(false);
+          // Restore focus to the trigger element
+          if (chatTriggerRef.current) {
+            chatTriggerRef.current.focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showModal, chatInput]);
+
+  // Auto-focus chat input when modal opens
+  useEffect(() => {
+    if (showModal && chatInputRef.current) {
+      setTimeout(() => {
+        chatInputRef.current.focus();
+      }, 100);
+    }
+  }, [showModal]);
 
   const handleEscalationSubmit = (e) => {
     e.preventDefault();
@@ -448,7 +491,7 @@ const Home = () => {
                 <p className="support-availability">
                   For additional support, our support team is available from 7 AM to 11 PM IST, 7 days a week.
                 </p>
-                <button className="assistance-cta-btn blue" onClick={() => setShowModal(true)}>
+                <button className="assistance-cta-btn blue" onClick={openChatModal}>
                   <MessageCircle size={20} />
                   Chat with Dev
                 </button>
@@ -481,7 +524,22 @@ const Home = () => {
 
       {/* Existing Chatbot Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay" onClick={() => {
+              if (chatInput.trim()) {
+                if (window.confirm('You have unsaved message. Are you sure you want to close the chat?')) {
+                  setShowModal(false);
+                  setChatInput('');
+                  if (chatTriggerRef.current) {
+                    chatTriggerRef.current.focus();
+                  }
+                }
+              } else {
+                setShowModal(false);
+                if (chatTriggerRef.current) {
+                  chatTriggerRef.current.focus();
+                }
+              }
+            }}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Chat Support</h3>
             <p style={{marginBottom: '1rem', color: '#64748b'}}>Powered by OpenAI Contextual Logic.</p>
@@ -499,6 +557,7 @@ const Home = () => {
                   type="text" 
                   placeholder="Type a message..." 
                   className="chat-input" 
+                  ref={chatInputRef}
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
                   disabled={isTyping}
@@ -506,7 +565,22 @@ const Home = () => {
                 <button type="submit" disabled={isTyping || !chatInput.trim()} className="chat-send-btn">Send</button>
               </form>
             </div>
-            <button className="close-btn" style={{marginTop: '1.5rem'}} onClick={() => setShowModal(false)}>Close Chat</button>
+            <button className="close-btn" style={{marginTop: '1.5rem'}} onClick={() => {
+              if (chatInput.trim()) {
+                if (window.confirm('You have unsaved message. Are you sure you want to close the chat?')) {
+                  setShowModal(false);
+                  setChatInput('');
+                  if (chatTriggerRef.current) {
+                    chatTriggerRef.current.focus();
+                  }
+                }
+              } else {
+                setShowModal(false);
+                if (chatTriggerRef.current) {
+                  chatTriggerRef.current.focus();
+                }
+              }
+            }}>Close Chat</button>
           </div>
         </div>
       )}
