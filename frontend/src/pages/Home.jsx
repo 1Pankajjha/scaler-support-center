@@ -445,10 +445,6 @@ const Home = () => {
                 </div>
                 <h3>Still need help?</h3>
                 <p>Get instant help from Dev, our AI assistant.</p>
-                <p className="availability-text">
-                  <Clock size={16} className="inline-clock" />
-                  Available 24×7
-                </p>
                 <button className="assistance-cta-btn blue" onClick={() => setShowModal(true)}>
                   <MessageCircle size={20} />
                   Chat with Dev
@@ -463,10 +459,6 @@ const Home = () => {
                 </div>
                 <h3>Not satisfied with the resolution?</h3>
                 <p>Not resolved? Raise an escalation after 24 hours.</p>
-                <p className="availability-text">
-                  <Clock size={16} className="inline-clock" />
-                  Mon–Fri, 11 AM – 8 PM IST
-                </p>
                 <div className="warning-box">
                   ⚠️ Reach out to support first. Escalate only after 24 hours if unsatisfied.
                 </div>
@@ -476,8 +468,26 @@ const Home = () => {
                 </button>
               </div>
             </div>
-            <div className="availability-info">
-              <p>Dev is available 24×7, 7 days a week to handle most of your queries. For additional support, our support team is available from 7 AM to 11 PM IST, 7 days a week.</p>
+            
+            {/* Support Availability Card */}
+            <div className="support-availability-card">
+              <div className="availability-item">
+                <div className="availability-icon">
+                  ⚡
+                </div>
+                <div className="availability-text-content">
+                  <p className="availability-primary">Dev is available 24×7, 7 days a week to handle most of your queries.</p>
+                </div>
+              </div>
+              <div className="availability-divider"></div>
+              <div className="availability-item">
+                <div className="availability-icon">
+                  👨‍💻
+                </div>
+                <div className="availability-text-content">
+                  <p className="availability-secondary">For additional support, our support team is available from 7 AM to 11 PM IST, 7 days a week.</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
