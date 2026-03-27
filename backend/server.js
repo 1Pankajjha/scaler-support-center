@@ -6,30 +6,56 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
 const { 
   verifyGoogleToken, 
   isAuthorizedAdmin, 
   generateSessionToken, 
   authenticateAdmin,
-  logAdminAccess,
-  sessionConfig 
+  logAdminAccess
 } = require('./auth');
 
 const app = express();
 const port = process.env.PORT || 5001;
 
+// Initialize SQLite DB (in-memory or file) 
+const isVercel = process.env.VERCEL === '1';
+const dbPath = isVercel ? '/tmp/scaler.db' : 'scaler.db';
+const db = new Database(dbPath, { verbose: console.log });
+
+// Logging for OAuth Debugging (Step 8)
+console.log('--- OAuth Configuration Check ---');
+console.log('GOOGLE_CLIENT_ID exists:', !!process.env.GOOGLE_CLIENT_ID);
+console.log('GOOGLE_CLIENT_SECRET exists:', !!process.env.GOOGLE_CLIENT_SECRET);
+if (process.env.GOOGLE_CLIENT_ID) {
+  console.log('GOOGLE_CLIENT_ID (first 10 chars):', process.env.GOOGLE_CLIENT_ID.substring(0, 10) + '...');
+}
+console.log('---------------------------------');
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5176',
+  origin: true, // Allow frontends from Railway
   credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
-app.use(session(sessionConfig));
 
-// Initialize SQLite DB (in-memory or file)
-const isVercel = process.env.VERCEL === '1';
-const dbPath = isVercel ? '/tmp/scaler.db' : 'scaler.db';
-const db = new Database(dbPath, { verbose: console.log });
+// Robust session configuration (Step 4 & 9)
+app.use(session({
+  store: new SQLiteStore({
+    db: dbPath,
+    table: 'admin_sessions',
+    dir: isVercel ? '/tmp' : '.',
+  }),
+  secret: process.env.SESSION_SECRET || 'scaler_support_session_secret_2024_production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    sameSite: 'lax'
+  }
+}));
 
 // Migrate to robust articles schema
 db.exec(`

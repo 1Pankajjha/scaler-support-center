@@ -40,11 +40,12 @@ const Login = () => {
     const initializeGoogleSignIn = () => {
       console.log('🔧 Initializing Google Sign-In...');
       
-      // Use actual Google Client ID for production
-      const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '433655757774-1h2jv9k2s8vq3n4m5l6p7r8s9t0u1v2w3.apps.googleusercontent.com';
-      console.log('🔑 Google Client ID:', googleClientId);
+      // Use actual Google Client ID from environment (Vite uses VITE_ prefix)
+      // Step 8: Debug log to verify client_id being sent
+      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      console.log('🔑 Google Client ID:', googleClientId ? 'CORRECTLY LOADED' : 'MISSING / UNDEFINED');
       
-      if (window.google) {
+      if (googleClientId && window.google) {
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           callback: handleGoogleSignIn,
@@ -52,6 +53,9 @@ const Login = () => {
           cancel_on_tap_outside: false
         });
         console.log('✅ Google Sign-In initialized successfully');
+      } else if (!googleClientId) {
+        console.error('❌ Google Client ID is missing! Ensure VITE_GOOGLE_CLIENT_ID is set.');
+        setError('Google Client ID configuration missing. Please check .env file.');
       } else {
         console.error('❌ Google object not available');
       }
