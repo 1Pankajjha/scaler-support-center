@@ -386,11 +386,6 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// --- START SERVER ---
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
-
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
@@ -399,3 +394,8 @@ if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
   });
 }
+
+// --- START SERVER ---
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
