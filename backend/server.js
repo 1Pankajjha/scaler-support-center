@@ -420,6 +420,12 @@ app.post('/api/chat', async (req, res) => {
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
   
+  // Admin routes - serve React app
+  app.get('/admin/*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+  });
+  
+  // Catch all other routes - serve React app
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
   });
