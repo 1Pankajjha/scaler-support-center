@@ -9,9 +9,15 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.18.2",
-    "openai": "^6.32.0"
+    "express-session": "^1.19.0",
+    "google-auth-library": "^10.6.2",
+    "jsonwebtoken": "^9.0.3",
+    "openai": "^6.32.0",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0"
   }
 }

@@ -5,6 +5,7 @@ const cors = require('cors');
 const Database = require('better-sqlite3');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const session = require('express-session');
 const { 
   verifyGoogleToken, 
   isAuthorizedAdmin, 
