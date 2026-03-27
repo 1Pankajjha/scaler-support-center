@@ -207,10 +207,20 @@
                     document.getElementById('openTickets').textContent = data.openTickets;
                     document.getElementById('resolvedTickets').textContent = data.resolvedTickets;
                 } else if (response.status === 401) {
-                    logout();
+                    // Token expired or invalid, redirect to login
+                    localStorage.removeItem('adminToken');
+                    window.location.href = '/admin/login';
+                } else {
+                    console.error('Failed to load insights:', response.status);
+                    document.getElementById('totalTickets').textContent = 'Error';
+                    document.getElementById('openTickets').textContent = 'Error';
+                    document.getElementById('resolvedTickets').textContent = 'Error';
                 }
             } catch (error) {
                 console.error('Failed to load dashboard:', error);
+                document.getElementById('totalTickets').textContent = '—';
+                document.getElementById('openTickets').textContent = '—';
+                document.getElementById('resolvedTickets').textContent = '—';
             }
         }
         
