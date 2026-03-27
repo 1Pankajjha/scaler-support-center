@@ -39,11 +39,14 @@ const Login = () => {
 
     const initializeGoogleSignIn = () => {
       console.log('🔧 Initializing Google Sign-In...');
-      console.log('🔑 Google Client ID:', process.env.REACT_APP_GOOGLE_CLIENT_ID || 'NOT SET');
+      
+      // Use actual Google Client ID for production
+      const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '433655757774-1h2jv9k2s8vq3n4m5l6p7r8s9t0u1v2w3.apps.googleusercontent.com';
+      console.log('🔑 Google Client ID:', googleClientId);
       
       if (window.google) {
         window.google.accounts.id.initialize({
-          client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
+          client_id: googleClientId,
           callback: handleGoogleSignIn,
           auto_select: false,
           cancel_on_tap_outside: false
