@@ -8,6 +8,7 @@
     "dev": "node server.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.100.1",
     "better-sqlite3": "^12.8.0",
     "connect-sqlite3": "^0.9.16",
     "cookie-parser": "^1.4.7",

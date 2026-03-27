@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Search, Plus, Edit2, Trash2, Eye, RefreshCw, TrendingUp, Bell, User } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, FileText, Settings, Search, Plus, Edit2, Trash2, Eye, RefreshCw, TrendingUp, Bell, User } from 'lucide-react';
 import '../styles/AdminDashboard.css';
 import getApiBaseUrl from '../utils/apiConfig';
+import { supabase } from '../utils/supabaseClient';
+import { fetchWithAuth } from '../utils/apiAuth';
 
 const AdminDashboard = () => {
   // Get API URL inside component to ensure window.location is available
@@ -44,16 +46,24 @@ const AdminDashboard = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch(`${API_URL}/auth/me`, {
-          credentials: 'include'
-        });
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          navigate('/admin/login');
+          return;
+        }
+
+        // Backend double-check for domain/whitelist
+        const response = await fetchWithAuth(`${API_URL}/auth/me`);
         
         if (!response.ok) {
+          // If backend rejects even if Supabase says yes (e.g. non-scaler email)
+          console.error('Backend auth failed');
+          await supabase.auth.signOut();
           navigate('/admin/login');
           return;
         }
         
-        const data = await response.json();
         // User is authenticated, proceed with fetching data
         fetchArticles();
         fetchInsights();
@@ -73,9 +83,7 @@ const AdminDashboard = () => {
     console.log('Full URL:', `${API_URL}/popular-topics`);
     
     try {
-      const res = await fetch(`${API_URL}/admin/popular-topics`, {
-        credentials: 'include'
-      });
+      const res = await fetchWithAuth(`${API_URL}/admin/popular-topics`);
       console.log('Response status:', res.status);
       console.log('Response ok:', res.ok);
       
@@ -103,9 +111,7 @@ const AdminDashboard = () => {
     console.log('Full URL:', `${API_URL}/articles`);
     
     try {
-      const res = await fetch(`${API_URL}/admin/articles`, {
-        credentials: 'include'
-      });
+      const res = await fetchWithAuth(`${API_URL}/admin/articles`);
       console.log('Response status:', res.status);
       console.log('Response ok:', res.ok);
       
@@ -135,9 +141,7 @@ const AdminDashboard = () => {
 
   const fetchInsights = async () => {
     try {
-      const res = await fetch(`${API_URL}/admin/insights`, {
-        credentials: 'include'
-      });
+      const res = await fetchWithAuth(`${API_URL}/admin/insights`);
       const data = await res.json();
       setInsights(data);
     } catch (e) {
@@ -147,14 +151,10 @@ const AdminDashboard = () => {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
+      await supabase.auth.signOut();
       navigate('/admin/login');
     } catch (error) {
       console.error('Logout failed:', error);
-      // Still navigate even if logout fails
       navigate('/admin/login');
     }
   };
@@ -196,10 +196,9 @@ const AdminDashboard = () => {
     console.log('- Form data:', formData);
     
     try {
-      const response = await fetch(url, {
+      const response = await fetchWithAuth(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(formData)
       });
       
@@ -238,9 +237,8 @@ const AdminDashboard = () => {
   const handleDeleteArticle = async (id) => {
     if(!window.confirm('Are you sure you want to delete this article permanently?')) return;
     try {
-      await fetch(`${API_URL}/admin/articles/${id}`, { 
+      await fetchWithAuth(`${API_URL}/admin/articles/${id}`, { 
         method: 'DELETE',
-        credentials: 'include'
       });
       fetchArticles();
     } catch(e) {
@@ -258,9 +256,8 @@ const AdminDashboard = () => {
   const handleDeleteTopic = async (id) => {
     if(!window.confirm('Are you sure you want to delete this popular topic?')) return;
     try {
-      await fetch(`${API_URL}/admin/popular-topics/${id}`, { 
+      await fetchWithAuth(`${API_URL}/admin/popular-topics/${id}`, { 
         method: 'DELETE',
-        credentials: 'include'
       });
       await fetchPopularTopics();
       setHasUnsavedChanges(false);
@@ -294,10 +291,9 @@ const AdminDashboard = () => {
         link_type: topicFormData.linkType
       });
       
-      const response = await fetch(url, {
+      const response = await fetchWithAuth(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           label: topicFormData.label,
           link: topicFormData.link,
@@ -351,12 +347,16 @@ const AdminDashboard = () => {
       }));
       
       if (reorderedTopics.length > 0) {
-        await fetch(`${API_URL}/admin/popular-topics/reorder`, {
+        const response = await fetchWithAuth(`${API_URL}/admin/popular-topics/reorder`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ topics: reorderedTopics })
         });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+        }
       }
       
       await fetchPopularTopics();

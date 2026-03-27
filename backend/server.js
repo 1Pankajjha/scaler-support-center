@@ -9,13 +9,10 @@ const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const rateLimit = require('express-rate-limit');
 const { 
-  verifyGoogleToken, 
   isAuthorizedAdmin, 
-  generateSessionToken, 
   authenticateAdmin,
   authorizeRole,
   logAdminAction,
-  logAdminAccess,
   ROLES
 } = require('./auth');
 
@@ -48,13 +45,11 @@ const dbPath = isVercel ? '/tmp/scaler.db' : 'scaler.db';
 const db = new Database(dbPath, { verbose: console.log });
 
 // Logging for OAuth Debugging (Step 8)
-console.log('--- OAuth Configuration Check ---');
-console.log('GOOGLE_CLIENT_ID exists:', !!process.env.GOOGLE_CLIENT_ID);
-console.log('GOOGLE_CLIENT_SECRET exists:', !!process.env.GOOGLE_CLIENT_SECRET);
-if (process.env.GOOGLE_CLIENT_ID) {
-  console.log('GOOGLE_CLIENT_ID (first 10 chars):', process.env.GOOGLE_CLIENT_ID.substring(0, 10) + '...');
-}
-console.log('---------------------------------');
+// Logging for Supabase Auth Check
+console.log('--- Supabase Auth Check ---');
+console.log('SUPABASE_URL exists:', !!process.env.SUPABASE_URL);
+console.log('SUPABASE_ANON_KEY exists:', !!process.env.SUPABASE_ANON_KEY);
+console.log('---------------------------');
 
 app.use(cors({
   origin: true, // Allow frontends from Railway
@@ -205,77 +200,9 @@ app.post('/api/tickets', (req, res) => {
 // --- AUTHENTICATION ROUTES ---
 
 // Google OAuth verification endpoint (Priority 12: Rate Limited)
-app.post('/api/auth/google', authLimiter, async (req, res) => {
-  console.log('🚀 Google auth endpoint hit');
-  console.log('📥 Request body:', req.body);
-  
-  try {
-    const { token } = req.body;
-    
-    if (!token) {
-      console.log('❌ No token provided in request');
-      return res.status(400).json({ error: 'No token provided' });
-    }
-    
-    console.log('✅ Token received, length:', token.length);
-    console.log('🔍 First 50 chars of token:', token.substring(0, 50) + '...');
-    
-    // Verify Google ID token
-    console.log('🔐 Verifying Google token...');
-    const payload = await verifyGoogleToken(token);
-    console.log('✅ Token verified successfully');
-    console.log('👤 User email:', payload.email);
-    console.log('👤 User name:', payload.name);
-    
-    // Check if user is authorized
-    console.log('🔍 Checking user authorization...');
-    if (!isAuthorizedAdmin(payload.email)) {
-      console.log('❌ User not authorized:', payload.email);
-      
-      // Log unauthorized attempt
-      db.prepare('INSERT INTO admin_logs (email, action, ip_address) VALUES (?, ?, ?)')
-        .run(payload.email, 'UNAUTHORIZED_ACCESS_ATTEMPT', req.ip);
-      
-      return res.status(403).json({ 
-        error: 'Access denied. Please use an authorized account.' 
-      });
-    }
-    
-    console.log('✅ User authorized, creating session...');
-    
-    // Generate session token
-    const sessionToken = generateSessionToken(payload);
-    console.log('✅ Session token generated');
-    
-    // Set HTTP-only cookie
-    console.log('🍪 Setting session cookie...');
-    res.cookie('admin_session', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    });
-    
-    // Log successful login
-    db.prepare('INSERT INTO admin_logs (email, action, ip_address) VALUES (?, ?, ?)')
-      .run(payload.email, 'LOGIN_SUCCESS', req.ip);
-    
-    console.log('✅ Login successful for:', payload.email);
-    
-    res.json({
-      success: true,
-      user: {
-        email: payload.email,
-        name: payload.name,
-        picture: payload.picture
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Google auth error:', error);
-    console.error('❌ Error stack:', error.stack);
-    res.status(401).json({ error: 'Authentication failed: ' + error.message });
-  }
+// Deprecated Google OAuth endpoint
+app.post('/api/auth/google', (req, res) => {
+  res.status(410).json({ error: 'Google OAuth is no longer supported. Please use the new Email login.' });
 });
 
 // Logout endpoint
@@ -426,8 +353,8 @@ adminRoutes.put('/popular-topics/reorder', authorizeRole([ROLES.ADMIN]), (req, r
   res.json(updatedTopics);
 });
 
-// Mount admin routes with logging
-app.use('/api/admin', logAdminAccess, adminRoutes);
+// Mount admin routes
+app.use('/api/admin', adminRoutes);
 
 // --- CHATBOT API ---
 const openaiConfig = { apiKey: process.env.OPENAI_API_KEY };

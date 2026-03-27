@@ -1,143 +1,150 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../utils/supabaseClient';
 import '../styles/Login.css';
 
 const Login = () => {
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [isOtpMode, setIsOtpMode] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Check if already logged in
+  // Check if already logged in via Supabase session
   useEffect(() => {
     const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/me', {
-          credentials: 'include'
-        });
-        if (response.ok) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Double check domain even if session exists
+        const userEmail = session.user.email;
+        if (userEmail.endsWith('@scaler.com')) {
           navigate('/admin/dashboard');
+        } else {
+          await supabase.auth.signOut();
+          setError('Unauthorized domain.');
         }
-      } catch (error) {
-        // Not logged in, continue
       }
     };
     checkAuth();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const userEmail = session.user.email;
+        if (userEmail.endsWith('@scaler.com')) {
+          navigate('/admin/dashboard');
+        } else {
+          supabase.auth.signOut();
+          setError('Only @scaler.com emails are allowed.');
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Load Google Identity Services
-  useEffect(() => {
-    const loadGoogleScript = () => {
-      console.log('📦 Loading Google Identity Services script...');
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = initializeGoogleSignIn;
-      script.onerror = () => console.error('❌ Failed to load Google script');
-      document.body.appendChild(script);
-    };
+  const validateEmail = (email) => {
+    if (!email) return 'Email is required';
+    if (!email.endsWith('@scaler.com')) {
+      return 'Only @scaler.com emails are allowed';
+    }
+    return null;
+  };
 
-    const initializeGoogleSignIn = () => {
-      console.log('🔧 Initializing Google Sign-In...');
-      
-      // Use actual Google Client ID from environment (Vite uses VITE_ prefix)
-      // Step 8: Debug log to verify client_id being sent
-      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-      console.log('🔑 Google Client ID:', googleClientId ? 'CORRECTLY LOADED' : 'MISSING / UNDEFINED');
-      
-      if (googleClientId && window.google) {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: handleGoogleSignIn,
-          auto_select: false,
-          cancel_on_tap_outside: false
-        });
-        console.log('✅ Google Sign-In initialized successfully');
-      } else if (!googleClientId) {
-        console.error('❌ Google Client ID is missing! Ensure VITE_GOOGLE_CLIENT_ID is set.');
-        setError('Google Client ID configuration missing. Please check .env file.');
-      } else {
-        console.error('❌ Google object not available');
-      }
-    };
-
-    loadGoogleScript();
-
-    return () => {
-      const script = document.querySelector('script[src*="accounts.google.com/gsi/client"]');
-      if (script) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
-
-  const handleGoogleSignIn = async (response) => {
-    console.log('🔍 Google Sign-In callback triggered');
-    console.log('📥 Response from Google:', response);
-    
-    if (!response || !response.credential) {
-      console.error('❌ No credential in Google response');
-      setError('Invalid response from Google');
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError(emailError);
       return;
     }
-    
+
     setIsLoading(true);
     setError('');
-    
-    console.log('✅ Google credential received, length:', response.credential.length);
-    
+    setMessage('');
+
     try {
-      // Send the ID token to backend for verification
-      console.log('📤 Sending token to backend...');
-      const res = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          // Dynamic redirect based on environment
+          emailRedirectTo: `${window.location.origin}/admin/dashboard`,
+          shouldCreateUser: false, // Security: Disable public signup
         },
-        credentials: 'include',
-        body: JSON.stringify({ token: response.credential }),
       });
 
-      console.log('📥 Backend response status:', res.status);
-      console.log('📥 Backend response ok:', res.ok);
-
-      const data = await res.json();
-      console.log('📥 Backend response data:', data);
-
-      if (res.ok && data.success) {
-        // Authentication successful
-        console.log('✅ Authentication successful, redirecting...');
-        navigate('/admin/dashboard');
-      } else {
-        // Handle errors
-        console.error('❌ Authentication failed:', data.error);
-        setError(data.error || 'Authentication failed');
+      if (error) {
+        // If user doesn't exist and we disabled signup, Supabase might return an error
+        if (error.status === 400 || error.message.includes('User not found')) {
+          throw new Error('This email is not authorized for admin access.');
+        }
+        throw error;
       }
+
+      setMessage('Check your email for the magic login link!');
     } catch (err) {
-      console.error('❌ Authentication error:', err);
-      console.error('❌ Error stack:', err.stack);
-      setError('Failed to authenticate with Google. Please try again.');
+      console.error('Auth error:', err);
+      setError(err.message || 'Failed to send login link.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleLogin = () => {
-    if (window.google && window.google.accounts.id) {
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // Fallback to popup if prompt is not displayed
-          window.google.accounts.id.renderButton(
-            document.getElementById('google-signin-button'),
-            {
-              theme: 'outline',
-              size: 'large',
-              text: 'continue_with',
-              width: '100%'
-            }
-          );
+  const handleOtpRequest = async () => {
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
         }
       });
+
+      if (error) throw error;
+      
+      setIsOtpMode(true);
+      setMessage('A 6-digit code has been sent to your email.');
+    } catch (err) {
+      setError(err.message || 'Failed to send OTP.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (!otp || otp.length < 6) {
+      setError('Please enter a valid 6-digit code.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type: 'email'
+      });
+
+      if (error) throw error;
+      // onAuthStateChange will handle redirection
+    } catch (err) {
+      setError(err.message || 'Invalid or expired code.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -146,7 +153,7 @@ const Login = () => {
       <div className="login-card">
         <div className="login-header">
           <a href="/" className="premium-logo login-logo" aria-label="Scaler Homepage">
-            <svg className="scaler-official-logo" viewBox="0 0 1324 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+             <svg className="scaler-official-logo" viewBox="0 0 1324 280" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M1147.8 228.928C1147.58 228.163 1147.43 227.38 1147.35 226.588C1147.35 195.638 1147.35 164.685 1147.35 133.728C1147.35 132.188 1147.27 130.638 1147.35 129.107C1147.48 127.177 1148.36 125.377 1149.81 124.096C1156.13 117.876 1162.49 111.695 1168.78 105.436C1181.25 92.9706 1193.71 80.4789 1206.15 67.9611C1210.83 63.2881 1215.52 58.6475 1220.23 54.0395C1220.93 53.4591 1221.68 52.9374 1222.46 52.4796H1323.1C1323.4 53.2759 1323.6 54.1037 1323.7 54.9461C1323.7 86.3121 1323.7 117.671 1323.7 149.024C1323.74 149.682 1323.84 150.334 1324 150.974V154.065C1322.96 155.235 1321.97 156.463 1320.87 157.574C1316.55 161.929 1312.22 166.264 1307.87 170.58C1302.33 176.049 1296.72 181.45 1291.21 186.938C1278.13 199.976 1265.07 213.024 1252.02 226.081C1251.05 227.114 1249.84 228.031 1248.75 229.006L1147.8 228.928ZM1249.37 217.901L1250.1 218.418C1252.18 216.127 1254.17 213.739 1256.34 211.545C1265.13 202.738 1273.95 193.964 1282.79 185.223C1283.28 184.772 1283.66 184.221 1283.91 183.608C1284.15 182.995 1284.27 182.335 1284.23 181.674C1284.19 152.992 1284.19 124.314 1284.23 95.6386C1284.23 95.3267 1284.23 95.0147 1284.23 94.6637C1284.29 93.2599 1283.87 92.6164 1282.22 92.6164C1253.22 92.6749 1224.22 92.6749 1195.22 92.6164C1194.55 92.5983 1193.89 92.7219 1193.27 92.979C1192.66 93.2362 1192.1 93.621 1191.65 94.108C1181.29 104.507 1170.93 114.867 1160.57 125.188C1160.23 125.529 1159.92 125.909 1159.35 126.553H1249.4L1249.37 217.901ZM1219.15 177.394V159.592C1219.15 157.067 1219.05 156.96 1216.57 156.96H1181.12C1180.65 156.96 1180.14 157.019 1179.72 156.96C1178.26 156.96 1177.77 157.662 1177.77 159.076C1177.81 171.255 1177.81 183.429 1177.77 195.596C1177.77 197.136 1178.41 197.789 1179.86 197.76C1181.66 197.76 1183.46 197.623 1185.26 197.623C1195.9 197.623 1206.53 197.623 1217.16 197.623C1219.11 197.623 1219.11 197.623 1219.11 195.615C1219.11 189.532 1219.11 183.445 1219.11 177.355" fill="#17181c"></path>
               <path d="M52.9678 99.3528C52.9678 107.503 58.2908 112.095 90.0142 117.778H90.0337C153.305 129.136 165.979 148.166 165.979 175.2C165.979 191.725 158.014 230.185 84.272 230.185C56.4483 230.185 8.5902 222.941 0.430245 174.459L0.0402832 172.139H44.9541L45.4026 173.504C50.6476 189.288 63.8185 196.327 88.1132 196.327C116.707 196.327 120.012 186.655 120.012 179.383C120.012 169.292 113.548 163.073 78.2374 157.077C15.8337 146.402 7.23508 124.934 7.23508 103.33C7.23508 71.1293 36.4627 50.3151 81.708 50.3151C149.142 50.3151 158.228 89.5745 159.427 101.605L159.642 103.789H114.855L114.436 102.346C111.881 93.3669 105.837 84.2027 80.4407 84.2027C67.9034 84.2027 52.9678 86.8252 52.9678 99.3528Z" fill="#17181c"></path>
               <path fill-rule="evenodd" clip-rule="evenodd" d="M500.332 228.927H551.115L484.841 52.411H425.732L359.176 228.927H408.808L422.291 189.083H487.132L500.332 228.927ZM454.716 86.3864L477.958 157.759H431.474L454.716 86.3864Z" fill="#17181c"></path>
@@ -157,32 +164,83 @@ const Login = () => {
             </svg>
           </a>
           <h2>Admin Login</h2>
-          <p>Sign in to manage Help Center</p>
+          <p>Sign in with your @scaler.com email</p>
         </div>
         
         <div className="login-form">
           {error && <div className="error-message">👉 {error}</div>}
+          {message && <div className="success-message">💡 {message}</div>}
           
-          <div id="google-signin-button"></div>
-          
-          <button 
-            type="button" 
-            className="google-signin-btn" 
-            onClick={handleGoogleLogin}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <div className="loading-spinner"></div>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17.64 9.20455C17.64 8.56637 17.5827 7.95273 17.4764 7.36364H9V10.845H13.8436C13.675 11.97 13.1109 12.9914 12.2623 13.6409V15.8195H15.0809C16.6582 14.2527 17.64 11.9455 17.64 9.20455Z" fill="#4285F4"/>
-                <path d="M9 18C11.43 18 13.4673 17.1941 15.0809 15.8195L12.2623 13.6409C11.4636 14.1709 10.44 14.4909 9 14.4909C6.65591 14.4909 4.67318 12.9373 3.96409 10.8109H1.04545V13.0636C2.65227 16.2955 6.08591 18 9 18Z" fill="#34A853"/>
-                <path d="M3.96409 10.8109C3.78409 10.2809 3.68182 9.71591 3.68182 9.13636C3.68182 8.55682 3.78409 7.99182 3.96409 7.46182V5.20909H1.04545C0.378182 6.54318 0 8.06182 0 9.13636C0 10.2109 0.378182 11.7295 1.04545 13.0636L3.96409 10.8109Z" fill="#FBBC05"/>
-                <path d="M9 3.78182C10.5682 3.78182 11.9818 4.33364 13.0909 5.41818L15.5864 2.92273C13.4636 0.894545 11.43 0 9 0C6.08591 0 2.65227 1.70455 1.04545 4.93636L3.96409 7.18909C4.67318 5.06273 6.65591 3.78182 9 3.78182Z" fill="#EA4335"/>
-              </svg>
-            )}
-            {isLoading ? 'Authenticating...' : 'Continue with Google'}
-          </button>
+          {!isOtpMode ? (
+            <form onSubmit={handleEmailSubmit}>
+              <div className="form-group">
+                <label htmlFor="email">Work Email</label>
+                <input 
+                  id="email"
+                  type="email" 
+                  className="dark-input" 
+                  placeholder="name@scaler.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                  required
+                />
+              </div>
+              
+              <button 
+                type="submit" 
+                className="primary-login-btn" 
+                disabled={isLoading}
+              >
+                {isLoading ? <div className="loading-spinner"></div> : 'Continue with Email'}
+              </button>
+
+              <div className="login-divider">
+                <span>OR</span>
+              </div>
+
+              <button 
+                type="button" 
+                className="secondary-login-btn" 
+                onClick={handleOtpRequest}
+                disabled={isLoading}
+              >
+                Use OTP instead
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp}>
+              <div className="form-group">
+                <label htmlFor="otp">Enter 6-digit Code</label>
+                <input 
+                  id="otp"
+                  type="text" 
+                  className="dark-input otp-input" 
+                  placeholder="000000"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                  required
+                />
+              </div>
+              
+              <button 
+                type="submit" 
+                className="primary-login-btn" 
+                disabled={isLoading}
+              >
+                {isLoading ? <div className="loading-spinner"></div> : 'Verify & Login'}
+              </button>
+
+              <button 
+                type="button" 
+                className="text-btn" 
+                onClick={() => setIsOtpMode(false)}
+                disabled={isLoading}
+              >
+                ← Back to Magic Link
+              </button>
+            </form>
+          )}
         </div>
         
         <div className="login-footer">
