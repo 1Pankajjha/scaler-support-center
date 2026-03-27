@@ -3,24 +3,15 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f1535 0%, #1a2160 50%, #0f1535 100%);
+  background-color: #0f1535;
   position: relative;
   overflow: hidden;
-}
-
-.login-container::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle at 60% 40%, rgba(59, 91, 219, 0.15) 0%, transparent 60%);
-  pointer-events: none;
 }
 
 .login-card {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   padding: 2.5rem;
-  border-radius: 16px;
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
   width: 100%;
   max-width: 420px;
@@ -41,7 +32,6 @@
   margin-bottom: 2rem;
   background: white;
   padding: 0.75rem 1.25rem;
-  border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
   text-decoration: none;
@@ -61,6 +51,7 @@
 .login-header h2 {
   font-size: 1.75rem;
   font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   color: #111827;
   margin-bottom: 0.5rem;
   letter-spacing: -0.025em;
@@ -70,6 +61,7 @@
   color: #6b7280;
   font-size: 0.95rem;
   font-weight: 400;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .form-group {
@@ -79,6 +71,7 @@
 .form-group label {
   display: block;
   font-weight: 500;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
   color: #374151;
@@ -88,8 +81,7 @@
   width: 100%;
   padding: 0.875rem 1rem;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-family: inherit;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 1rem;
   background: #f9fafb;
   color: #111827;
@@ -113,9 +105,9 @@
   background-color: white;
   color: #374151;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
   font-size: 1rem;
   font-weight: 500;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -135,8 +127,8 @@
   color: #dc2626;
   background-color: #fef2f2;
   padding: 0.75rem 1rem;
-  border-radius: 8px;
   font-size: 0.875rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   margin-bottom: 1.5rem;
   border-left: 3px solid #dc2626;
   line-height: 1.4;
@@ -154,6 +146,7 @@
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   transition: color 0.2s ease;
 }
 
