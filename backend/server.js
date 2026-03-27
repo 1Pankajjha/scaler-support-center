@@ -7,16 +7,40 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
+const rateLimit = require('express-rate-limit');
 const { 
   verifyGoogleToken, 
   isAuthorizedAdmin, 
   generateSessionToken, 
   authenticateAdmin,
-  logAdminAccess
+  authorizeRole,
+  logAdminAction,
+  logAdminAccess,
+  ROLES
 } = require('./auth');
 
 const app = express();
 const port = process.env.PORT || 5001;
+
+// --- SECURITY: RATE LIMITING (Priority 12) ---
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // Limit each IP to 5 login attempts per hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please try again in an hour.' }
+});
+
+// Apply global rate limit to all /api routes
+app.use('/api/', apiLimiter);
 
 // Initialize SQLite DB (in-memory or file) 
 const isVercel = process.env.VERCEL === '1';
@@ -180,8 +204,8 @@ app.post('/api/tickets', (req, res) => {
 
 // --- AUTHENTICATION ROUTES ---
 
-// Google OAuth verification endpoint
-app.post('/api/auth/google', async (req, res) => {
+// Google OAuth verification endpoint (Priority 12: Rate Limited)
+app.post('/api/auth/google', authLimiter, async (req, res) => {
   console.log('🚀 Google auth endpoint hit');
   console.log('📥 Request body:', req.body);
   
@@ -267,14 +291,14 @@ app.get('/api/auth/me', authenticateAdmin, (req, res) => {
   });
 });
 
-// --- PROTECTED ADMIN ROUTES ---
+// --- PROTECTED ADMIN ROUTES (Priority 1 & 3) ---
 
 // Protect all admin routes
 const adminRoutes = express.Router();
 adminRoutes.use(authenticateAdmin);
 
-// Admin insights
-adminRoutes.get('/insights', (req, res) => {
+// Admin insights (Available to all authenticated staff)
+adminRoutes.get('/insights', authorizeRole([ROLES.ADMIN, ROLES.SUPPORT, ROLES.VIEWER]), (req, res) => {
   const totalCount = db.prepare("SELECT count(*) as count FROM tickets").get();
   const openCount = db.prepare("SELECT count(*) as count FROM tickets WHERE status = 'open'").get();
   const resolvedCount = db.prepare("SELECT count(*) as count FROM tickets WHERE status = 'resolved'").get();
@@ -288,21 +312,25 @@ adminRoutes.get('/insights', (req, res) => {
   });
 });
 
-// Admin Articles CRUD (all articles including drafts)
-adminRoutes.get('/articles', (req, res) => {
+// Admin Articles CRUD (RBAC Applied)
+adminRoutes.get('/articles', authorizeRole([ROLES.ADMIN, ROLES.SUPPORT, ROLES.VIEWER]), (req, res) => {
   const articles = db.prepare('SELECT * FROM articles ORDER BY updated_at DESC').all();
   res.json(articles);
 });
 
-adminRoutes.post('/articles', (req, res) => {
+adminRoutes.post('/articles', authorizeRole([ROLES.ADMIN]), (req, res) => {
   const { title, content, category, status } = req.body;
   const stmt = db.prepare('INSERT INTO articles (title, content, category, status) VALUES (?, ?, ?, ?)');
   const info = stmt.run(title, content, category, status || 'draft');
+  
+  // Audit Log (Priority 11)
+  logAdminAction(db, req.user.email, 'CREATE_ARTICLE', { id: info.lastInsertRowid, title }, req.ip);
+  
   const newArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json(newArticle);
 });
 
-adminRoutes.put('/articles/:id', (req, res) => {
+adminRoutes.put('/articles/:id', authorizeRole([ROLES.ADMIN]), (req, res) => {
   const { id } = req.params;
   const { title, content, category, status } = req.body;
   
@@ -310,26 +338,34 @@ adminRoutes.put('/articles/:id', (req, res) => {
   const info = stmt.run(title, content, category, status, id);
   
   if (info.changes === 0) return res.status(404).json({ error: 'Article not found' });
+  
+  // Audit Log
+  logAdminAction(db, req.user.email, 'UPDATE_ARTICLE', { id, title }, req.ip);
+  
   const updatedArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(id);
   res.json(updatedArticle);
 });
 
-adminRoutes.delete('/articles/:id', (req, res) => {
+adminRoutes.delete('/articles/:id', authorizeRole([ROLES.ADMIN]), (req, res) => {
   const { id } = req.params;
   const stmt = db.prepare('DELETE FROM articles WHERE id = ?');
   const info = stmt.run(id);
   
   if (info.changes === 0) return res.status(404).json({ error: 'Article not found' });
+  
+  // Audit Log
+  logAdminAction(db, req.user.email, 'DELETE_ARTICLE', { id }, req.ip);
+  
   res.json({ message: 'Article deleted successfully' });
 });
 
-// Admin Popular Topics CRUD
-adminRoutes.get('/popular-topics', (req, res) => {
+// Admin Popular Topics CRUD (RBAC Applied)
+adminRoutes.get('/popular-topics', authorizeRole([ROLES.ADMIN, ROLES.SUPPORT, ROLES.VIEWER]), (req, res) => {
   const topics = db.prepare('SELECT * FROM popular_topics ORDER BY order_index ASC').all();
   res.json(topics);
 });
 
-adminRoutes.post('/popular-topics', (req, res) => {
+adminRoutes.post('/popular-topics', authorizeRole([ROLES.ADMIN]), (req, res) => {
   const { label, link, link_type } = req.body;
   
   const maxOrder = db.prepare('SELECT MAX(order_index) as max_order FROM popular_topics').get();
@@ -338,11 +374,14 @@ adminRoutes.post('/popular-topics', (req, res) => {
   const stmt = db.prepare('INSERT INTO popular_topics (label, link, link_type, order_index, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)');
   const info = stmt.run(label, link, link_type, nextOrder);
   
+  // Audit Log
+  logAdminAction(db, req.user.email, 'CREATE_TOPIC', { id: info.lastInsertRowid, label }, req.ip);
+  
   const newTopic = db.prepare('SELECT * FROM popular_topics WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json(newTopic);
 });
 
-adminRoutes.put('/popular-topics/:id', (req, res) => {
+adminRoutes.put('/popular-topics/:id', authorizeRole([ROLES.ADMIN]), (req, res) => {
   const { id } = req.params;
   const { label, link, link_type } = req.body;
   
@@ -350,20 +389,28 @@ adminRoutes.put('/popular-topics/:id', (req, res) => {
   const info = stmt.run(label, link, link_type, id);
   
   if (info.changes === 0) return res.status(404).json({ error: 'Popular topic not found' });
+  
+  // Audit Log
+  logAdminAction(db, req.user.email, 'UPDATE_TOPIC', { id, label }, req.ip);
+  
   const updatedTopic = db.prepare('SELECT * FROM popular_topics WHERE id = ?').get(id);
   res.json(updatedTopic);
 });
 
-adminRoutes.delete('/popular-topics/:id', (req, res) => {
+adminRoutes.delete('/popular-topics/:id', authorizeRole([ROLES.ADMIN]), (req, res) => {
   const { id } = req.params;
   const stmt = db.prepare('DELETE FROM popular_topics WHERE id = ?');
   const info = stmt.run(id);
   
   if (info.changes === 0) return res.status(404).json({ error: 'Popular topic not found' });
+  
+  // Audit Log
+  logAdminAction(db, req.user.email, 'DELETE_TOPIC', { id }, req.ip);
+  
   res.json({ message: 'Popular topic deleted successfully' });
 });
 
-adminRoutes.put('/popular-topics/reorder', (req, res) => {
+adminRoutes.put('/popular-topics/reorder', authorizeRole([ROLES.ADMIN]), (req, res) => {
   const { topics } = req.body; // Array of { id, order_index }
   
   const updateStmt = db.prepare('UPDATE popular_topics SET order_index = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
@@ -372,55 +419,11 @@ adminRoutes.put('/popular-topics/reorder', (req, res) => {
     updateStmt.run(order_index, id);
   });
   
+  // Audit Log
+  logAdminAction(db, req.user.email, 'REORDER_TOPICS', { count: topics.length }, req.ip);
+  
   const updatedTopics = db.prepare('SELECT * FROM popular_topics ORDER BY order_index ASC').all();
   res.json(updatedTopics);
-});
-
-// --- AUTHENTICATION ROUTES ---
-
-// Google OAuth verification endpoint
-app.post('/api/auth/google', async (req, res) => {
-  const timestamp = new Date().toISOString();
-  const ip = req.ip || req.connection.remoteAddress;
-  
-  console.log(`[${timestamp}] Auth attempt - IP: ${ip}`);
-  
-  // Check if Google Client ID is configured
-  if (!process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID === 'your_google_client_id_here') {
-    console.error(`[${timestamp}] ❌ Google OAuth not configured - IP: ${ip}`);
-    return res.status(500).json({ error: 'OAuth service not configured' });
-  }
-  
-  try {
-    const { token } = req.body;
-    
-    // Validate token exists
-    if (!token) {
-      console.log(`[${timestamp}] Auth failed: No token provided - IP: ${ip}`);
-      return res.status(400).json({ error: 'Token is required' });
-    }
-    
-    const payload = await verifyGoogleToken(token);
-    
-    // Check if authorized admin
-    if (!isAuthorizedAdmin(payload.email)) {
-      console.log(`[${timestamp}] ❌ UNAUTHORIZED ACCESS ATTEMPT - Email: ${payload.email}, IP: ${ip}`);
-      return res.status(403).json({ error: 'Access denied. Only @scaler.com emails allowed.' });
-    }
-    
-    // Generate session token
-    const sessionToken = generateSessionToken(payload);
-    
-    console.log(`[${timestamp}] ✅ Admin login successful - Email: ${payload.email}, IP: ${ip}`);
-    
-    res.json({
-      token: sessionToken,
-      user: payload
-    });
-  } catch (error) {
-    console.error(`[${timestamp}] ❌ Auth failed - IP: ${ip}, Error: ${error.message}`);
-    res.status(401).json({ error: 'Authentication failed' });
-  }
 });
 
 // Mount admin routes with logging

@@ -52,13 +52,30 @@ const isAuthorizedAdmin = (email) => {
   return true;
 };
 
-// Generate JWT session token
+// Role Definitions
+const ROLES = {
+  ADMIN: 'admin',
+  SUPPORT: 'support',
+  VIEWER: 'viewer'
+};
+
+// Admin Email Role Mapping (In production this would come from a database)
+const ADMIN_EMAILS = {
+  'pankaj.jha@scaler.com': ROLES.ADMIN,
+  'admin@scaler.com': ROLES.ADMIN,
+  'support@scaler.com': ROLES.SUPPORT,
+  'viewer@scaler.com': ROLES.VIEWER
+};
+
+// Generate JWT session token with Role
 const generateSessionToken = (user) => {
+  const role = ADMIN_EMAILS[user.email] || ROLES.SUPPORT; // Default to support for @scaler.com domain
   return jwt.sign(
     { 
       email: user.email, 
       name: user.name,
       picture: user.picture,
+      role: role,
       iat: Math.floor(Date.now() / 1000)
     },
     process.env.JWT_SECRET || 'scaler_support_jwt_secret_2024_production',
@@ -66,37 +83,65 @@ const generateSessionToken = (user) => {
   );
 };
 
-// Middleware to protect admin routes
+// Middleware to protect admin routes and extract User Profile
 const authenticateAdmin = (req, res, next) => {
   try {
-    const token = req.cookies.admin_session || req.headers.authorization?.split(' ')[1];
+    // Priority 2: Standardizing Authorization header (Bearer token)
+    let token = req.headers.authorization?.startsWith('Bearer ') 
+      ? req.headers.authorization.split(' ')[1] 
+      : req.cookies.admin_session;
     
     if (!token) {
       console.log('❌ Authentication failed: No token provided');
-      return res.status(401).json({ error: 'Authentication required' });
+      return res.status(401).json({ error: 'Authentication required. Authorization header or cookie missing.' });
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'scaler_support_jwt_secret_2024_production');
     
-    // Double-check authorization
+    // Double-check domain authorization (Priority 1)
     if (!isAuthorizedAdmin(decoded.email)) {
-      console.log('❌ Unauthorized access attempt by:', decoded.email);
-      return res.status(403).json({ error: 'Access denied' });
+      console.log('❌ Unauthorized access attempt by domain:', decoded.email);
+      return res.status(403).json({ error: 'Access denied. Unauthorized domain.' });
     }
     
     req.user = decoded;
-    console.log('✅ Admin authenticated:', decoded.email);
     next();
   } catch (error) {
     console.error('Authentication error:', error.message);
-    return res.status(401).json({ error: 'Invalid or expired session' });
+    return res.status(401).json({ error: 'Invalid or expired session. Please log in again.' });
+  }
+};
+
+// Middleware for Role-Based Access Control (RBAC)
+const authorizeRole = (requiredRoles = []) => {
+  return (req, res, next) => {
+    if (!req.user || !req.user.role) {
+      return res.status(403).json({ error: 'Access denied. Role not found.' });
+    }
+
+    if (requiredRoles.length && !requiredRoles.includes(req.user.role)) {
+      console.log(`❌ RBAC Violation: ${req.user.email} (Role: ${req.user.role}) attempted access to ${req.path}`);
+      return res.status(403).json({ error: `Access denied. Requires one of these roles: ${requiredRoles.join(', ')}` });
+    }
+
+    next();
+  };
+};
+
+// Audit Log Helper (Priority 11)
+const logAdminAction = (db, email, action, details = {}, ip = '0.0.0.0') => {
+  try {
+    const stmt = db.prepare('INSERT INTO admin_logs (email, action, timestamp, ip_address) VALUES (?, ?, CURRENT_TIMESTAMP, ?)');
+    stmt.run(email, `${action}: ${JSON.stringify(details)}`, ip);
+  } catch (err) {
+    console.error('Audit Log Error:', err);
   }
 };
 
 // Log admin access attempts
 const logAdminAccess = (req, res, next) => {
   const timestamp = new Date().toISOString();
-  const ip = req.ip || req.connection.remoteAddress;
+  const ip = req.ip || req.get('x-forwarded-for') || req.connection.remoteAddress;
   const email = req.user?.email || 'Unknown';
   
   console.log(`[${timestamp}] Admin Access - IP: ${ip}, Email: ${email}, Path: ${req.path}`);
@@ -121,6 +166,9 @@ module.exports = {
   isAuthorizedAdmin,
   generateSessionToken,
   authenticateAdmin,
+  authorizeRole,
+  logAdminAction,
   logAdminAccess,
+  ROLES,
   sessionConfig
 };

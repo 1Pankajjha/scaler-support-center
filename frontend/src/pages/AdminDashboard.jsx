@@ -73,7 +73,9 @@ const AdminDashboard = () => {
     console.log('Full URL:', `${API_URL}/popular-topics`);
     
     try {
-      const res = await fetch(`${API_URL}/popular-topics`);
+      const res = await fetch(`${API_URL}/admin/popular-topics`, {
+        credentials: 'include'
+      });
       console.log('Response status:', res.status);
       console.log('Response ok:', res.ok);
       
@@ -101,7 +103,9 @@ const AdminDashboard = () => {
     console.log('Full URL:', `${API_URL}/articles`);
     
     try {
-      const res = await fetch(`${API_URL}/articles`);
+      const res = await fetch(`${API_URL}/admin/articles`, {
+        credentials: 'include'
+      });
       console.log('Response status:', res.status);
       console.log('Response ok:', res.ok);
       
@@ -131,7 +135,9 @@ const AdminDashboard = () => {
 
   const fetchInsights = async () => {
     try {
-      const res = await fetch(`${API_URL}/admin/insights`);
+      const res = await fetch(`${API_URL}/admin/insights`, {
+        credentials: 'include'
+      });
       const data = await res.json();
       setInsights(data);
     } catch (e) {
@@ -182,7 +188,7 @@ const AdminDashboard = () => {
     setSaveSuccess(null);
     
     const method = editingArticle ? 'PUT' : 'POST';
-    const url = editingArticle ? `${API_URL}/articles/${editingArticle}` : `${API_URL}/articles`;
+    const url = editingArticle ? `${API_URL}/admin/articles/${editingArticle}` : `${API_URL}/admin/articles`;
     
     console.log('Request details:');
     console.log('- Method:', method);
@@ -193,6 +199,7 @@ const AdminDashboard = () => {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(formData)
       });
       
@@ -231,7 +238,10 @@ const AdminDashboard = () => {
   const handleDeleteArticle = async (id) => {
     if(!window.confirm('Are you sure you want to delete this article permanently?')) return;
     try {
-      await fetch(`${API_URL}/articles/${id}`, { method: 'DELETE' });
+      await fetch(`${API_URL}/admin/articles/${id}`, { 
+        method: 'DELETE',
+        credentials: 'include'
+      });
       fetchArticles();
     } catch(e) {
       console.error('Failed to delete article');
@@ -248,7 +258,10 @@ const AdminDashboard = () => {
   const handleDeleteTopic = async (id) => {
     if(!window.confirm('Are you sure you want to delete this popular topic?')) return;
     try {
-      await fetch(`${API_URL}/popular-topics/${id}`, { method: 'DELETE' });
+      await fetch(`${API_URL}/admin/popular-topics/${id}`, { 
+        method: 'DELETE',
+        credentials: 'include'
+      });
       await fetchPopularTopics();
       setHasUnsavedChanges(false);
     } catch (e) {
@@ -270,7 +283,7 @@ const AdminDashboard = () => {
     
     try {
       const method = editingTopic ? 'PUT' : 'POST';
-      const url = editingTopic ? `${API_URL}/popular-topics/${editingTopic}` : `${API_URL}/popular-topics`;
+      const url = editingTopic ? `${API_URL}/admin/popular-topics/${editingTopic}` : `${API_URL}/admin/popular-topics`;
       
       console.log('Request details:');
       console.log('- Method:', method);
@@ -284,6 +297,7 @@ const AdminDashboard = () => {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           label: topicFormData.label,
           link: topicFormData.link,
@@ -337,9 +351,10 @@ const AdminDashboard = () => {
       }));
       
       if (reorderedTopics.length > 0) {
-        await fetch(`${API_URL}/popular-topics/reorder`, {
+        await fetch(`${API_URL}/admin/popular-topics/reorder`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ topics: reorderedTopics })
         });
       }

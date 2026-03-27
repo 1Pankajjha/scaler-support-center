@@ -470,7 +470,23 @@ const Home = () => {
                    </div>
                 ))
               ) : searchQuery === debouncedSearchQuery ? (
-                <div className="search-result-item no-results">No articles found across live database</div>
+                <div className="search-result-item no-results-enhanced">
+                  <div className="no-res-content">
+                    <AlertCircle size={24} className="no-res-icon" />
+                    <div className="no-res-text">
+                      <h4>No articles found for "{searchQuery}"</h4>
+                      <p>Try different keywords or contact our team directly.</p>
+                    </div>
+                  </div>
+                  <div className="no-res-actions">
+                    <button className="no-res-cta" onClick={() => { setShowModal(true); setIsSearchFocused(false); setSearchQuery(''); }}>
+                      <MessageCircle size={16} /> Chat with Dev
+                    </button>
+                    <button className="no-res-cta secondary" onClick={() => { setViewCategory(null); setIsSearchFocused(false); setSearchQuery(''); }}>
+                      Browse Categories
+                    </button>
+                  </div>
+                </div>
               ) : null}
             </div>
           )}
@@ -836,8 +852,11 @@ const Home = () => {
                   </button>
                 </div>
                 
-                <div className="support-link">
-                  Still need help? <a href="#" onClick={(e) => { e.preventDefault(); setShowModal(true); }}>Contact support again</a>
+                <div className="support-link-enhanced">
+                  <p>Still need help? Our dev team is available to assist you now.</p>
+                  <button className="support-cta-inline" onClick={() => { setShowEscalationModal(false); resetEscalationForm(); setShowModal(true); }}>
+                    <MessageCircle size={16} /> Contact Support Channel
+                  </button>
                 </div>
               </>
             )}
