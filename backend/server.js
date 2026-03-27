@@ -349,6 +349,46 @@ adminRoutes.put('/popular-topics/reorder', (req, res) => {
   res.json(updatedTopics);
 });
 
+// --- AUTHENTICATION ROUTES ---
+
+// Google OAuth verification endpoint
+app.post('/api/auth/google', async (req, res) => {
+  console.log('🚀 Google auth endpoint hit');
+  try {
+    const { token } = req.body;
+    const payload = await verifyGoogleToken(token);
+    
+    // Log successful login
+    console.log('✅ Login successful:', payload.email);
+    
+    // Check if authorized admin
+    if (!isAuthorizedAdmin(payload.email)) {
+      return res.status(403).json({ error: 'Unauthorized - Admin access required' });
+    }
+    
+    // Generate session token
+    const sessionToken = generateSessionToken(payload);
+    
+    res.json({
+      token: sessionToken,
+      user: payload
+    });
+  } catch (error) {
+    console.error('❌ Auth error:', error.message);
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// --- ADMIN LOGIN PAGE ---
+app.get('/admin/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// --- ADMIN DASHBOARD ---
+app.get('/admin', authenticateAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin-dashboard.html'));
+});
+
 // Mount admin routes
 app.use('/api/admin', adminRoutes);
 

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Scaler Support</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #f8fafc;
+        }
+        
+        .header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo h1 {
+            font-size: 1.5rem;
+            color: #1e40af;
+        }
+        
+        .logout-btn {
+            padding: 0.5rem 1rem;
+            background: #ef4444;
+            color: white;
+            border: none;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .logout-btn:hover {
+            background: #dc2626;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .stat-label {
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        
+        .section {
+            background: white;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 2rem;
+        }
+        
+        .section-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            background: #1e40af;
+            color: white;
+            border: none;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .btn:hover {
+            background: #1e3a8a;
+        }
+        
+        .content {
+            padding: 1.5rem;
+        }
+        
+        .message {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            padding: 1rem;
+            color: #0c4a6e;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                <path d="M12 2L2 7L12 12L22 7L12 2Z"></path>
+                <path d="M2 17L12 22L22 17"></path>
+                <path d="M2 12L12 17L22 12"></path>
+            </svg>
+            <h1>Scaler Support Admin</h1>
+        </div>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+    
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Tickets</div>
+                <div class="stat-value" id="totalTickets">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Open Tickets</div>
+                <div class="stat-value" id="openTickets">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Resolved Tickets</div>
+                <div class="stat-value" id="resolvedTickets">-</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Articles Management</h2>
+                <button class="btn" onclick="manageArticles()">Manage Articles</button>
+            </div>
+            <div class="content">
+                <div class="message">
+                    Article management interface would be integrated here. You can use the API endpoints directly to manage articles.
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Popular Topics</h2>
+                <button class="btn" onclick="manageTopics()">Manage Topics</button>
+            </div>
+            <div class="content">
+                <div class="message">
+                    Popular topics management interface would be integrated here. You can use the API endpoints directly to manage topics.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        
+        // Check if logged in
+        if (!localStorage.getItem('adminToken')) {
+            window.location.href = '/admin/login';
+        }
+        
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/insights`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('totalTickets').textContent = data.totalTickets;
+                    document.getElementById('openTickets').textContent = data.openTickets;
+                    document.getElementById('resolvedTickets').textContent = data.resolvedTickets;
+                } else if (response.status === 401) {
+                    logout();
+                }
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin/login';
+        }
+        
+        function manageArticles() {
+            alert('Article management would open here. For now, you can use the API endpoints directly.');
+        }
+        
+        function manageTopics() {
+            alert('Topics management would open here. For now, you can use the API endpoints directly.');
+        }
+        
+        // Load data on page load
+        loadDashboard();
+    </script>
+</body>
+</html>
