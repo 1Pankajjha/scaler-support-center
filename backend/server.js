@@ -379,16 +379,6 @@ app.post('/api/auth/google', async (req, res) => {
   }
 });
 
-// --- ADMIN LOGIN PAGE ---
-app.get('/admin/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
-});
-
-// --- ADMIN DASHBOARD ---
-app.get('/admin', authenticateAdmin, (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin-dashboard.html'));
-});
-
 // Mount admin routes
 app.use('/api/admin', adminRoutes);
 
