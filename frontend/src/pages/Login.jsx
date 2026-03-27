@@ -134,38 +134,6 @@ const Login = () => {
     }
   };
 
-  // TEMPORARY DEBUG FUNCTION
-  const handleDebugLogin = async () => {
-    console.log('🚨 Using debug login bypass...');
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      const res = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ token: 'DEBUG_BYPASS_TOKEN' }),
-      });
-
-      const data = await res.json();
-      console.log('Debug response:', data);
-
-      if (res.ok && data.success) {
-        navigate('/admin/dashboard');
-      } else {
-        setError(data.error || 'Debug login failed');
-      }
-    } catch (err) {
-      console.error('Debug login error:', err);
-      setError('Debug login failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="login-container">
       <div className="login-card">
@@ -207,26 +175,6 @@ const Login = () => {
               </svg>
             )}
             {isLoading ? 'Authenticating...' : 'Continue with Google'}
-          </button>
-          
-          {/* TEMPORARY DEBUG BUTTON */}
-          <button 
-            type="button" 
-            className="debug-btn" 
-            onClick={handleDebugLogin}
-            disabled={isLoading}
-            style={{
-              marginTop: '10px',
-              backgroundColor: '#ff6b6b',
-              color: 'white',
-              border: 'none',
-              padding: '10px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px'
-            }}
-          >
-            🚨 DEBUG: Login as test@gmail.com
           </button>
         </div>
         

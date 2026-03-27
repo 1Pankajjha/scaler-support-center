@@ -10,15 +10,8 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Middleware to verify Google ID token
 const verifyGoogleToken = async (token) => {
-  // TEMPORARY BYPASS FOR DEBUGGING
-  if (token === 'DEBUG_BYPASS_TOKEN') {
-    console.log('🚨 Using DEBUG BYPASS - returning mock payload');
-    return {
-      email: 'test@gmail.com',
-      name: 'Test User',
-      picture: 'https://example.com/avatar.jpg'
-    };
-  }
+  // DEBUG BYPASS REMOVED FOR SECURITY
+  // No bypass allowed - must use valid Google OAuth token
   
   try {
     const ticket = await googleClient.verifyIdToken({
@@ -27,46 +20,36 @@ const verifyGoogleToken = async (token) => {
     });
     
     const payload = ticket.getPayload();
+    if (!payload) {
+      throw new Error('Invalid token payload');
+    }
     return payload;
   } catch (error) {
     console.error('Error verifying Google token:', error);
-    throw new Error('Invalid token');
+    throw new Error('Invalid Google OAuth token');
   }
 };
 
 // Check if user is authorized admin
 const isAuthorizedAdmin = (email) => {
-  console.log('🔍 Checking authorization for email:', email);
+  // SECURITY: Only allow scaler.com domain emails
+  // interviewbit.com removed for security
   
-  // Option 1: Check authorized domain
-  const authorizedDomains = ['scaler.com', 'interviewbit.com'];
+  if (!email || typeof email !== 'string') {
+    console.log('❌ Invalid email format');
+    return false;
+  }
+  
   const domain = email.split('@')[1];
   
-  console.log('📧 Email domain:', domain);
-  console.log('✅ Authorized domains:', authorizedDomains);
-  
-  if (authorizedDomains.includes(domain)) {
-    console.log('✅ User authorized via domain');
-    return true;
+  // STRICT: Only scaler.com domain allowed
+  if (domain !== 'scaler.com') {
+    console.log('❌ Access denied for domain:', domain);
+    return false;
   }
   
-  // Option 2: Check against admin whitelist (you can add this to database)
-  const adminWhitelist = [
-    'admin@scaler.com',
-    'support@scaler.com',
-    'test@gmail.com', // Temporary debug email
-    // Add more authorized emails as needed
-  ];
-  
-  console.log('📋 Admin whitelist:', adminWhitelist);
-  
-  if (adminWhitelist.includes(email)) {
-    console.log('✅ User authorized via whitelist');
-    return true;
-  }
-  
-  console.log('❌ User NOT authorized');
-  return false;
+  console.log('✅ User authorized:', email);
+  return true;
 };
 
 // Generate JWT session token
@@ -89,16 +72,35 @@ const authenticateAdmin = (req, res, next) => {
     const token = req.cookies.admin_session || req.headers.authorization?.split(' ')[1];
     
     if (!token) {
-      return res.status(401).json({ error: 'No authentication token provided' });
+      console.log('❌ Authentication failed: No token provided');
+      return res.status(401).json({ error: 'Authentication required' });
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'scaler_support_jwt_secret_2024_production');
+    
+    // Double-check authorization
+    if (!isAuthorizedAdmin(decoded.email)) {
+      console.log('❌ Unauthorized access attempt by:', decoded.email);
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
     req.user = decoded;
+    console.log('✅ Admin authenticated:', decoded.email);
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    console.error('Authentication error:', error.message);
+    return res.status(401).json({ error: 'Invalid or expired session' });
   }
+};
+
+// Log admin access attempts
+const logAdminAccess = (req, res, next) => {
+  const timestamp = new Date().toISOString();
+  const ip = req.ip || req.connection.remoteAddress;
+  const email = req.user?.email || 'Unknown';
+  
+  console.log(`[${timestamp}] Admin Access - IP: ${ip}, Email: ${email}, Path: ${req.path}`);
+  next();
 };
 
 // Session configuration
@@ -119,5 +121,6 @@ module.exports = {
   isAuthorizedAdmin,
   generateSessionToken,
   authenticateAdmin,
+  logAdminAccess,
   sessionConfig
 };

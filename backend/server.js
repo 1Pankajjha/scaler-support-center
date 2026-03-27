@@ -11,6 +11,7 @@ const {
   isAuthorizedAdmin, 
   generateSessionToken, 
   authenticateAdmin,
+  logAdminAccess,
   sessionConfig 
 } = require('./auth');
 
@@ -353,34 +354,51 @@ adminRoutes.put('/popular-topics/reorder', (req, res) => {
 
 // Google OAuth verification endpoint
 app.post('/api/auth/google', async (req, res) => {
-  console.log('🚀 Google auth endpoint hit');
+  const timestamp = new Date().toISOString();
+  const ip = req.ip || req.connection.remoteAddress;
+  
+  console.log(`[${timestamp}] Auth attempt - IP: ${ip}`);
+  
+  // Check if Google Client ID is configured
+  if (!process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID === 'your_google_client_id_here') {
+    console.error(`[${timestamp}] ❌ Google OAuth not configured - IP: ${ip}`);
+    return res.status(500).json({ error: 'OAuth service not configured' });
+  }
+  
   try {
     const { token } = req.body;
-    const payload = await verifyGoogleToken(token);
     
-    // Log successful login
-    console.log('✅ Login successful:', payload.email);
+    // Validate token exists
+    if (!token) {
+      console.log(`[${timestamp}] Auth failed: No token provided - IP: ${ip}`);
+      return res.status(400).json({ error: 'Token is required' });
+    }
+    
+    const payload = await verifyGoogleToken(token);
     
     // Check if authorized admin
     if (!isAuthorizedAdmin(payload.email)) {
-      return res.status(403).json({ error: 'Unauthorized - Admin access required' });
+      console.log(`[${timestamp}] ❌ UNAUTHORIZED ACCESS ATTEMPT - Email: ${payload.email}, IP: ${ip}`);
+      return res.status(403).json({ error: 'Access denied. Only @scaler.com emails allowed.' });
     }
     
     // Generate session token
     const sessionToken = generateSessionToken(payload);
+    
+    console.log(`[${timestamp}] ✅ Admin login successful - Email: ${payload.email}, IP: ${ip}`);
     
     res.json({
       token: sessionToken,
       user: payload
     });
   } catch (error) {
-    console.error('❌ Auth error:', error.message);
-    res.status(401).json({ error: 'Invalid token' });
+    console.error(`[${timestamp}] ❌ Auth failed - IP: ${ip}, Error: ${error.message}`);
+    res.status(401).json({ error: 'Authentication failed' });
   }
 });
 
-// Mount admin routes
-app.use('/api/admin', adminRoutes);
+// Mount admin routes with logging
+app.use('/api/admin', logAdminAccess, adminRoutes);
 
 // --- CHATBOT API ---
 const openaiConfig = { apiKey: process.env.OPENAI_API_KEY };
