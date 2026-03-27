@@ -120,7 +120,26 @@ app.get('/api/categories', (req, res) => {
 
 // --- POPULAR TOPICS API (Public) ---
 app.get('/api/popular-topics', (req, res) => {
-  const topics = db.prepare('SELECT * FROM popular_topics ORDER BY order_index ASC').all();
+  let topics = db.prepare('SELECT * FROM popular_topics ORDER BY order_index ASC').all();
+  
+  // If no popular topics exist, insert default ones
+  if (topics.length === 0) {
+    const defaultTopics = [
+      { label: 'How to pause my course?', link: '/course/pause', link_type: 'article', order_index: 1 },
+      { label: 'Refund policy', link: '/billing/refund', link_type: 'article', order_index: 2 },
+      { label: 'Certificate download issues', link: '/certificates/download', link_type: 'article', order_index: 3 },
+      { label: 'Login problems', link: '/account/login', link_type: 'article', order_index: 4 }
+    ];
+    
+    const insertStmt = db.prepare('INSERT INTO popular_topics (label, link, link_type, order_index) VALUES (?, ?, ?, ?)');
+    defaultTopics.forEach(topic => {
+      insertStmt.run(topic.label, topic.link, topic.link_type, topic.order_index);
+    });
+    
+    // Fetch again after inserting defaults
+    topics = db.prepare('SELECT * FROM popular_topics ORDER BY order_index ASC').all();
+  }
+  
   res.json(topics);
 });
 
