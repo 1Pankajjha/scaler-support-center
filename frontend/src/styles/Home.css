@@ -129,9 +129,9 @@
 /* Hero Section */
 .hero-section {
   text-align: center;
-  background-color: #0A0F24;
+  background: radial-gradient(ellipse at 60% 40%, #1e2a6e 0%, #0f1535 70%) !important;
   color: white;
-  padding: 6.5rem 2rem 7.5rem;
+  padding: 6rem 2rem 3.5rem !important;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -270,15 +270,15 @@
 }
 
 .topics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 1.25rem !important;
   margin-bottom: 4rem;
 }
 
 .topic-card {
   background-color: var(--card-bg);
-  padding: 1.75rem;
+  padding: 1.5rem !important;
   border: 1px solid var(--border-color);
   display: flex;
   align-items: flex-start;
