@@ -78,7 +78,7 @@ const generateSessionToken = (user) => {
       picture: user.picture,
       iat: Math.floor(Date.now() / 1000)
     },
-    process.env.JWT_SECRET || 'your-secret-key',
+    process.env.JWT_SECRET || 'scaler_support_jwt_secret_2024_production',
     { expiresIn: '24h' }
   );
 };
@@ -92,7 +92,7 @@ const authenticateAdmin = (req, res, next) => {
       return res.status(401).json({ error: 'No authentication token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'scaler_support_jwt_secret_2024_production');
     req.user = decoded;
     next();
   } catch (error) {
@@ -103,7 +103,7 @@ const authenticateAdmin = (req, res, next) => {
 
 // Session configuration
 const sessionConfig = {
-  secret: process.env.SESSION_SECRET || 'your-session-secret',
+  secret: process.env.SESSION_SECRET || 'scaler_support_session_secret_2024_production',
   resave: false,
   saveUninitialized: false,
   cookie: {
