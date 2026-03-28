@@ -72,24 +72,28 @@ const AdminDashboard = () => {
     };
 
     const checkAuth = async () => {
+      console.log('--- ADMIN DASHBOARD: STARTING AUTH CHECK ---');
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
+        console.log('Initial getSession returned:', session ? 'Valid Session' : 'Null Session', 'Error:', error);
         if (error) throw error;
         
         if (!session) {
           // If magic link token might still be processing inside the hashtag fragment
           if (window.location.hash.includes('access_token')) {
-             console.log('Magic link token detected, waiting for event listener...');
+             console.log('Magic link token detected in URL hash, holding off redirect to login to allow listener to parse...');
              return;
           }
+          console.log('No session, no hash. Redirecting back to Login.');
           if (!unmounted) navigate('/admin/login');
           return;
         }
         
+        console.log('Session is present, verifying backend connectivity...');
         await verifyBackendSession();
       } catch (error) {
-        console.error('Initial check error:', error);
+        console.error('Initial check error critical failure:', error);
         if (!unmounted) navigate('/admin/login');
       }
     };

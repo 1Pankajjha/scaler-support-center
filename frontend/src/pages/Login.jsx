@@ -103,6 +103,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
+          emailRedirectTo: `${window.location.origin}/admin/dashboard`,
           shouldCreateUser: true, // Allow automatic account creation for @scaler.com
         }
       });
