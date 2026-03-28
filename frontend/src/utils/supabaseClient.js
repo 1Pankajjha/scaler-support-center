@@ -10,5 +10,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Note: createClient will throw if url is empty, so we only initialize if provided
 // to prevent the entire JS bundle from crashing.
 export const supabase = (supabaseUrl && supabaseAnonKey) 
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    })
   : { auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }), getSession: async () => ({ data: { session: null } }), signInWithOtp: async () => ({ error: { message: 'Supabase not configured' } }) } };

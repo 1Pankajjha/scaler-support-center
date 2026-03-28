@@ -12,6 +12,7 @@ const AdminDashboard = () => {
   
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('faqs');
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   
   // Data States
   const [articles, setArticles] = useState([]);
@@ -44,44 +45,52 @@ const AdminDashboard = () => {
   const [topicSaveSuccess, setTopicSaveSuccess] = useState(null);
 
   useEffect(() => {
-    // Separate out the backend validation logic so it can optionally be fired from the auth listener
+    let unmounted = false;
+
+    // Separate out the backend validation logic 
     const verifyBackendSession = async () => {
       try {
         const response = await fetchWithAuth(`${API_URL}/auth/me`);
         if (!response.ok) {
-          console.error('Backend auth failed');
-          await supabase.auth.signOut();
-          navigate('/admin/login');
-          return;
+          console.error('Backend auth check failed with status:', response.status);
+          throw new Error('Backend rejection');
         }
-        fetchArticles();
-        fetchInsights();
-        fetchPopularTopics();
+        
+        if (!unmounted) {
+          setIsAuthLoading(false);
+          fetchArticles();
+          fetchInsights();
+          fetchPopularTopics();
+        }
       } catch (error) {
         console.error('Backend validation error:', error);
-        navigate('/admin/login');
+        if (!unmounted) {
+          await supabase.auth.signOut();
+          navigate('/admin/login');
+        }
       }
     };
 
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) throw error;
         
         if (!session) {
-          // CRUCIAL: Magic Links contain tokens in the hash. getSession might resolve
-          // before Supabase fully parses it. If it's there, wait for the event listener!
+          // If magic link token might still be processing inside the hashtag fragment
           if (window.location.hash.includes('access_token')) {
-             console.log('Magic link token detected, deferring back to event listener...');
+             console.log('Magic link token detected, waiting for event listener...');
              return;
           }
-          navigate('/admin/login');
+          if (!unmounted) navigate('/admin/login');
           return;
         }
         
         await verifyBackendSession();
       } catch (error) {
         console.error('Initial check error:', error);
-        navigate('/admin/login');
+        if (!unmounted) navigate('/admin/login');
       }
     };
     
@@ -89,15 +98,31 @@ const AdminDashboard = () => {
 
     // Attach listener to pick up where checkAuth left off (if deferred via magic link)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+      console.log('Auth event:', event);
+      if (session) {
         verifyBackendSession();
       } else if (event === 'SIGNED_OUT') {
-        navigate('/admin/login');
+        if (!unmounted) navigate('/admin/login');
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      unmounted = true;
+      subscription.unsubscribe();
+    };
   }, [navigate, API_URL]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="login-container">
+        <div className="login-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
+          <div className="loading-spinner"></div>
+          <p style={{ marginTop: '20px', color: '#bfc4cc' }}>Authenticating...</p>
+        </div>
+      </div>
+    );
+  }
+
 
   const fetchPopularTopics = async () => {
     console.log('=== ADMIN DASHBOARD: fetchPopularTopics ===');
