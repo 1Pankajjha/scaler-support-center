@@ -71,15 +71,11 @@ const Login = () => {
         options: {
           // Dynamic redirect based on environment
           emailRedirectTo: `${window.location.origin}/admin/dashboard`,
-          shouldCreateUser: false, // Security: Disable public signup
+          shouldCreateUser: true, // Allow automatic account creation for @scaler.com
         },
       });
 
       if (error) {
-        // If user doesn't exist and we disabled signup, Supabase might return an error
-        if (error.status === 400 || error.message.includes('User not found')) {
-          throw new Error('This email is not authorized for admin access.');
-        }
         throw error;
       }
 
@@ -107,7 +103,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: false,
+          shouldCreateUser: true, // Allow automatic account creation for @scaler.com
         }
       });
 
