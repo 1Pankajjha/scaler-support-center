@@ -136,7 +136,11 @@ const Login = () => {
       });
 
       if (error) throw error;
-      // onAuthStateChange will handle redirection
+      
+      // Explicit navigation backup in case onAuthStateChange is slow
+      if (email.endsWith('@scaler.com')) {
+        navigate('/admin/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Invalid or expired code.');
     } finally {

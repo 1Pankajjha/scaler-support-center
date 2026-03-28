@@ -44,37 +44,59 @@ const AdminDashboard = () => {
   const [topicSaveSuccess, setTopicSaveSuccess] = useState(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    // Separate out the backend validation logic so it can optionally be fired from the auth listener
+    const verifyBackendSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          navigate('/admin/login');
-          return;
-        }
-
-        // Backend double-check for domain/whitelist
         const response = await fetchWithAuth(`${API_URL}/auth/me`);
-        
         if (!response.ok) {
-          // If backend rejects even if Supabase says yes (e.g. non-scaler email)
           console.error('Backend auth failed');
           await supabase.auth.signOut();
           navigate('/admin/login');
           return;
         }
-        
-        // User is authenticated, proceed with fetching data
         fetchArticles();
         fetchInsights();
         fetchPopularTopics();
       } catch (error) {
-        console.error('Auth check failed:', error);
+        console.error('Backend validation error:', error);
+        navigate('/admin/login');
+      }
+    };
+
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          // CRUCIAL: Magic Links contain tokens in the hash. getSession might resolve
+          // before Supabase fully parses it. If it's there, wait for the event listener!
+          if (window.location.hash.includes('access_token')) {
+             console.log('Magic link token detected, deferring back to event listener...');
+             return;
+          }
+          navigate('/admin/login');
+          return;
+        }
+        
+        await verifyBackendSession();
+      } catch (error) {
+        console.error('Initial check error:', error);
         navigate('/admin/login');
       }
     };
     
     checkAuth();
+
+    // Attach listener to pick up where checkAuth left off (if deferred via magic link)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        verifyBackendSession();
+      } else if (event === 'SIGNED_OUT') {
+        navigate('/admin/login');
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate, API_URL]);
 
   const fetchPopularTopics = async () => {
