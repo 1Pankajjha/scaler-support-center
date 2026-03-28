@@ -19,6 +19,10 @@ const {
 const app = express();
 const port = process.env.PORT || 5001;
 
+console.log('🚀 BE SERVER STARTING...');
+console.log(`📡 PORT assigned: ${port}`);
+console.log(`🌐 NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+
 // --- SECURITY: RATE LIMITING (Priority 12) ---
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -144,6 +148,7 @@ if (categoryCount.count === 0) {
 
 // --- HEALTH CHECK API ---
 app.get('/api/health', (req, res) => {
+  console.log('💚 Health check hit: /api/health');
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
@@ -151,9 +156,16 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Explicit endpoint that Railway checks sometimes (public articles)
+app.get('/api/articles/health', (req, res) => {
+  console.log('📗 Health check hit: /api/articles/health');
+  res.json({ status: 'ok' });
+});
+
 // --- PUBLIC ARTICLES (FAQs) API ---
 // Only show published articles to public
 app.get('/api/articles', (req, res) => {
+  console.log('📘 Public articles hit at /api/articles');
   const articles = db.prepare("SELECT * FROM articles WHERE status = 'published' ORDER BY updated_at DESC").all();
   res.json(articles);
 });

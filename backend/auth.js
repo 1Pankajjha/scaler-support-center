@@ -1,11 +1,22 @@
 const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || ''
-);
+// Lazy Initialize Supabase client
+let supabase = null;
+const getSupabase = () => {
+  if (supabase) return supabase;
+  
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  
+  if (!url || !key) {
+    console.warn('⚠️ Supabase configuration missing! Admin Auth will FAIL.');
+    return null;
+  }
+  
+  supabase = createClient(url, key);
+  return supabase;
+};
 
 // Check if user is authorized admin
 const isAuthorizedAdmin = (email) => {
@@ -57,7 +68,11 @@ const authenticateAdmin = async (req, res, next) => {
     }
 
     // Verify token with Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const supabaseClient = getSupabase();
+    if (!supabaseClient) {
+      return res.status(500).json({ error: 'Supabase auth service is not configured on the server.' });
+    }
+    const { data: { user }, error } = await supabaseClient.auth.getUser(token);
 
     if (error || !user) {
       console.error('Supabase auth error:', error?.message);
