@@ -44,36 +44,14 @@ const Login = () => {
     setMessage('');
 
     try {
-      const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN;
-      const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
-
-      if (!auth0Domain || !clientId) {
-        throw new Error("Missing Auth0 configuration in environment variables.");
-      }
-
-      // Directly call Auth0's Passwordless API to explicitly bypass Universal Login rendering issues
-      const response = await fetch(`https://${auth0Domain}/passwordless/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          client_id: clientId,
+      await loginWithRedirect({
+        authorizationParams: {
           connection: 'email',
-          email: email,
-          send: 'link'
-        }),
+          login_hint: email
+        }
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error_description || errorData.error || 'Failed to send Auth0 magic link.');
-      }
-
-      setMessage('💡 Magic link sent! Please check your email inbox to proceed.');
-      setIsLoading(false);
     } catch (err) {
-      console.error('Auth0 Passwordless API error:', err);
+      console.error('Auth0 routing error:', err);
       setError(err.message || 'Failed to initialize Auth0 passwordless login.');
       setIsLoading(false);
     }
