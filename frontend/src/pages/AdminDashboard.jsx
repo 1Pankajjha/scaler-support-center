@@ -14,7 +14,7 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('faqs');
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   
-  const { isAuthenticated, isLoading: auth0IsLoading, user, getAccessTokenSilently, logout, error: auth0Error } = useAuth0();
+  const { isAuthenticated, isLoading: auth0IsLoading, user, getIdTokenClaims, logout, error: auth0Error } = useAuth0();
   
   // Track Auth0 SDK internal errors natively to prevent silent bounce-backs
   useEffect(() => {
@@ -58,7 +58,13 @@ const AdminDashboard = () => {
 
     const verifyBackendSession = async () => {
       try {
-        const token = await getAccessTokenSilently();
+        // Without an explicit API Audience configured, Auth0 returns Opaque Access Tokens.
+        // We gracefully extract the OIDC id_token instead to provide the backend with a verifiable cryptographic JWT.
+        const claims = await getIdTokenClaims();
+        const token = claims?.__raw;
+
+        if (!token) throw new Error('ID Token missing');
+        
         setAuthToken(token);
         
         const response = await fetchWithAuth(`${API_URL}/auth/me`);
@@ -109,7 +115,7 @@ const AdminDashboard = () => {
     return () => {
       unmounted = true;
     };
-  }, [navigate, API_URL, isAuthenticated, auth0IsLoading, user, getAccessTokenSilently, logout]);
+  }, [navigate, API_URL, isAuthenticated, auth0IsLoading, user, getIdTokenClaims, logout]);
 
   if (isAuthLoading) {
     return (
