@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, LayoutDashboard, Users, FileText, Settings, Search, Plus, Edit2, Trash2, Eye, RefreshCw, TrendingUp, Bell, User } from 'lucide-react';
 import '../styles/AdminDashboard.css';
 import getApiBaseUrl from '../utils/apiConfig';
-import { auth } from '../utils/firebaseClient';
-import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { fetchWithAuth } from '../utils/apiAuth';
+import { useAuth0 } from '@auth0/auth0-react';
+import { fetchWithAuth, setAuthToken } from '../utils/apiAuth';
 
 const AdminDashboard = () => {
   // Get API URL inside component to ensure window.location is available
@@ -14,6 +13,8 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('faqs');
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  
+  const { isAuthenticated, isLoading: auth0IsLoading, user, getAccessTokenSilently, logout } = useAuth0();
   
   // Data States
   const [articles, setArticles] = useState([]);
@@ -48,9 +49,11 @@ const AdminDashboard = () => {
   useEffect(() => {
     let unmounted = false;
 
-    // Separate out the backend validation logic 
     const verifyBackendSession = async () => {
       try {
+        const token = await getAccessTokenSilently();
+        setAuthToken(token);
+        
         const response = await fetchWithAuth(`${API_URL}/auth/me`);
         if (!response.ok) {
           console.error('Backend auth check failed with status:', response.status);
@@ -66,39 +69,40 @@ const AdminDashboard = () => {
       } catch (error) {
         console.error('Backend validation error:', error);
         if (!unmounted) {
-          await firebaseSignOut(auth);
-          navigate('/admin/login');
+          logout({ logoutParams: { returnTo: `${window.location.origin}/admin/login` } });
         }
       }
     };
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('--- ADMIN DASHBOARD: STARTING AUTH CHECK ---');
-      try {
-        if (!user) {
-          // If magic link token might still be processing inside the URL
-          if (window.location.href.includes('apiKey=') || window.location.href.includes('oobCode=')) {
-             console.log('Magic link token detected in URL, holding off redirect to login to allow listener to parse...');
-             return;
-          }
-          console.log('No session, no hash. Redirecting back to Login.');
-          if (!unmounted) navigate('/admin/login');
-          return;
-        }
-        
-        console.log('Session is present, verifying backend connectivity...');
-        await verifyBackendSession();
-      } catch (error) {
-        console.error('Initial check error critical failure:', error);
-        if (!unmounted) navigate('/admin/login');
+    const checkAuthStatus = async () => {
+      if (auth0IsLoading) {
+        return; // Wait for Auth0 to finish initializing
       }
-    });
+      
+      console.log('--- ADMIN DASHBOARD: STARTING AUTH0 CHECK ---');
+      if (!isAuthenticated) {
+        console.log('No active session. Redirecting back to Login.');
+        if (!unmounted) navigate('/admin/login');
+        return;
+      }
+      
+      if (user?.email && user.email.endsWith('@scaler.com')) {
+         console.log('Session is valid, verifying backend connectivity...');
+         await verifyBackendSession();
+      } else {
+         console.warn('Unauthorized domain detected. Logging out.');
+         if (!unmounted) {
+             logout({ logoutParams: { returnTo: `${window.location.origin}/admin/login` } });
+         }
+      }
+    };
+
+    checkAuthStatus();
 
     return () => {
       unmounted = true;
-      unsubscribe();
     };
-  }, [navigate, API_URL]);
+  }, [navigate, API_URL, isAuthenticated, auth0IsLoading, user, getAccessTokenSilently, logout]);
 
   if (isAuthLoading) {
     return (
@@ -186,8 +190,7 @@ const AdminDashboard = () => {
 
   const handleLogout = async () => {
     try {
-      await firebaseSignOut(auth);
-      navigate('/admin/login');
+      logout({ logoutParams: { returnTo: `${window.location.origin}/admin/login` } });
     } catch (error) {
       console.error('Logout failed:', error);
       navigate('/admin/login');

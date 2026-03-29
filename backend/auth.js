@@ -1,29 +1,18 @@
-const admin = require('firebase-admin');
+const { auth: auth0Middleware } = require('express-oauth2-jwt-bearer');
 
-// Lazy Initialize Firebase Admin client
-let firebaseApp = null;
-const getFirebaseAdmin = () => {
-  if (firebaseApp) return firebaseApp;
-  
-  try {
-    // Requires FIREBASE_SERVICE_ACCOUNT_KEY env var (JSON stringified service account)
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}');
-    
-    if (!serviceAccount.project_id) {
-      console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT_KEY missing or invalid! Admin Auth will FAIL.');
-      return null;
-    }
-    
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-    return firebaseApp;
-  } catch (error) {
-    console.error('Failed to initialize Firebase Admin:', error);
-    return null;
+const checkJwt = (req, res, next) => {
+  if (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_AUDIENCE) {
+    console.warn('⚠️ AUTH0_DOMAIN or AUTH0_AUDIENCE missing! API Auth will FAIL unconditionally.');
+    return res.status(500).json({ error: 'OAuth2 configuration missing on the server.' });
   }
-};
 
+  const jwtMiddleware = auth0Middleware({
+    audience: process.env.AUTH0_AUDIENCE,
+    issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}/`,
+  });
+  
+  jwtMiddleware(req, res, next);
+};
 // Check if user is authorized admin
 const isAuthorizedAdmin = (email) => {
   if (!email || typeof email !== 'string') return false;
@@ -55,57 +44,40 @@ const ADMIN_EMAILS = {
 };
 
 /**
- * Middleware to protect admin routes using Firebase JWT Token
+ * Middleware to protect admin routes using Auth0 Access Token (JWT)
  */
-const authenticateAdmin = async (req, res, next) => {
-  try {
-    // Get token from Authorization header or cookie
-    const authHeader = req.headers.authorization;
-    let token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : req.cookies?.fb_access_token;
-
-    if (!token) {
-      // Fallback for browser-based requests if using our custom cookie
-      token = req.cookies?.admin_session;
-    }
-
-    if (!token) {
-      return res.status(401).json({ error: 'Authentication required. No token found.' });
-    }
-
-    // Verify token with Firebase
-    const firebaseAdmin = getFirebaseAdmin();
-    if (!firebaseAdmin) {
-      return res.status(500).json({ error: 'Firebase Admin service is not configured on the server.' });
-    }
-    
-    let decodedToken;
-    try {
-      decodedToken = await admin.auth().verifyIdToken(token);
-    } catch (err) {
-      console.error('Firebase token verification error:', err.message);
+const authenticateAdmin = (req, res, next) => {
+  checkJwt(req, res, (err) => {
+    if (err) {
+      console.error('Auth0 token verification error:', err.message);
       return res.status(401).json({ error: 'Invalid or expired session token.' });
     }
 
-    const userEmail = decodedToken.email;
+    const payload = req.auth?.payload || {};
+    
+    // Auth0 access tokens don't include user email by default unless an Action is created.
+    // We check standard claims and a custom scaler namespace claim.
+    const userEmail = payload['https://scaler.com/email'] || payload.email || undefined;
 
-    // Strict Domain Validation (Priority 1)
-    if (!isAuthorizedAdmin(userEmail)) {
-      console.log('❌ Unauthorized domain:', userEmail);
-      return res.status(403).json({ error: 'Access denied. Only @scaler.com emails are allowed.' });
+    if (!userEmail) {
+      console.warn(`⚠️ Token authorized for sub ${payload.sub}, but NO email claim found. RBAC functions may be limited.`);
+    } else {
+      // Strict Domain Validation (Priority 1)
+      if (!isAuthorizedAdmin(userEmail)) {
+        console.log('❌ Unauthorized domain:', userEmail);
+        return res.status(403).json({ error: 'Access denied. Only @scaler.com emails are allowed.' });
+      }
     }
 
     // Set user info for RBAC
     req.user = {
-      email: userEmail,
-      id: decodedToken.uid,
+      email: userEmail || `Auth0User-${payload.sub}`,
+      id: payload.sub,
       role: ADMIN_EMAILS[userEmail] || ROLES.SUPPORT // Default role mapping
     };
 
     next();
-  } catch (error) {
-    console.error('Backend Auth Middleware Error:', error.message);
-    return res.status(500).json({ error: 'Internal server error during authentication.' });
-  }
+  });
 };
 
 // Middleware for Role-Based Access Control (RBAC)

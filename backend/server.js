@@ -48,9 +48,10 @@ const isVercel = process.env.VERCEL === '1';
 const dbPath = isVercel ? '/tmp/scaler.db' : 'scaler.db';
 const db = new Database(dbPath, { verbose: console.log });
 
-// Logging for Firebase Auth Check
-console.log('--- Firebase Admin Auth Check ---');
-console.log('FIREBASE_SERVICE_ACCOUNT_KEY exists:', !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+// Logging for Auth0 Auth Check
+console.log('--- Auth0 Configuration Check ---');
+console.log('AUTH0_DOMAIN exists:', !!process.env.AUTH0_DOMAIN);
+console.log('AUTH0_AUDIENCE exists:', !!process.env.AUTH0_AUDIENCE);
 console.log('---------------------------');
 
 app.use(cors({

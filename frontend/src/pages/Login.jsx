@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from '../utils/firebaseClient';
+import { useAuth0 } from '@auth0/auth0-react';
 import '../styles/Login.css';
 
 const Login = () => {
@@ -10,55 +9,19 @@ const Login = () => {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { loginWithRedirect, isAuthenticated, user, logout } = useAuth0();
 
   useEffect(() => {
     // 1. Check if user is already logged in
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        if (user.email && user.email.endsWith('@scaler.com')) {
-          navigate('/admin/dashboard');
-        } else {
-          await signOut(auth);
-          setError('Only @scaler.com emails are allowed.');
-        }
+    if (isAuthenticated && user) {
+      if (user.email && user.email.endsWith('@scaler.com')) {
+        navigate('/admin/dashboard');
+      } else {
+        logout({ logoutParams: { returnTo: `${window.location.origin}/admin/login` } });
+        setError('Only @scaler.com emails are allowed.');
       }
-    });
-
-    // 2. Check if we are returning from an email link
-    const handleEmailLinkLogin = async () => {
-      if (isSignInWithEmailLink(auth, window.location.href)) {
-        let savedEmail = window.localStorage.getItem('emailForSignIn');
-        if (!savedEmail) {
-          savedEmail = window.prompt('Please provide your email for confirmation');
-        }
-        
-        if (savedEmail) {
-          setIsLoading(true);
-          try {
-            const result = await signInWithEmailLink(auth, savedEmail, window.location.href);
-            window.localStorage.removeItem('emailForSignIn');
-            
-            // Domain check
-            if (result.user.email && result.user.email.endsWith('@scaler.com')) {
-              navigate('/admin/dashboard');
-            } else {
-              await signOut(auth);
-              setError('Only @scaler.com emails are allowed.');
-            }
-          } catch (err) {
-            console.error('Error signing in with email link', err);
-            setError(err.message || 'Error processing the login link. It may have expired.');
-          } finally {
-            setIsLoading(false);
-          }
-        }
-      }
-    };
-
-    handleEmailLinkLogin();
-
-    return () => unsubscribe();
-  }, [navigate]);
+    }
+  }, [isAuthenticated, user, navigate, logout]);
 
   const validateEmail = (e) => {
     if (!e) return 'Email is required';
@@ -78,24 +41,20 @@ const Login = () => {
 
     setIsLoading(true);
     setError('');
-    setMessage('');
-
-    const actionCodeSettings = {
-      // URL you want to redirect back to. Ensure the domain for this
-      // URL is explicitly whitelisted in the Firebase console.
-      url: `${window.location.origin}/admin/login`,
-      handleCodeInApp: true,
-    };
+    setMessage('Redirecting to secure login...');
 
     try {
-      if (!auth) throw new Error("Firebase Auth is not initialized. Check your credentials.");
-      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-      window.localStorage.setItem('emailForSignIn', email);
-      setMessage('Check your email for the magic login link!');
+      // Use connection: 'email' to explicitly force Auth0 passwordless magic link flow
+      await loginWithRedirect({
+        authorizationParams: {
+          connection: 'email',
+          login_hint: email
+        }
+      });
+      // Auth0 handles the redirect boundary from here, taking them to the waiting screen
     } catch (err) {
-      console.error('Auth error:', err);
-      setError(err.message || 'Failed to send login link.');
-    } finally {
+      console.error('Auth0 routing error:', err);
+      setError(err.message || 'Failed to initialize Auth0 login.');
       setIsLoading(false);
     }
   };

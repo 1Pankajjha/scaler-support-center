@@ -1,19 +1,16 @@
-import { auth } from './firebaseClient';
+let currentAuthToken = '';
+
+export const setAuthToken = (token) => {
+  currentAuthToken = token;
+};
 
 export const fetchWithAuth = async (url, options = {}) => {
-  const user = auth.currentUser;
-  let token = '';
-  
-  if (user) {
-    token = await user.getIdToken();
-  }
-
   const defaultOptions = {
     ...options,
     headers: {
       ...options.headers,
       'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : '',
+      'Authorization': currentAuthToken ? `Bearer ${currentAuthToken}` : '',
     },
   };
 
