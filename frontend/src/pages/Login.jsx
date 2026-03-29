@@ -1,53 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../utils/supabaseClient';
+import { sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from '../utils/firebaseClient';
 import '../styles/Login.css';
 
 const Login = () => {
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [isOtpMode, setIsOtpMode] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Check if already logged in via Supabase session
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // Double check domain even if session exists
-        const userEmail = session.user.email;
-        if (userEmail.endsWith('@scaler.com')) {
+    // 1. Check if user is already logged in
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        if (user.email && user.email.endsWith('@scaler.com')) {
           navigate('/admin/dashboard');
         } else {
-          await supabase.auth.signOut();
-          setError('Unauthorized domain.');
-        }
-      }
-    };
-    checkAuth();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        const userEmail = session.user.email;
-        if (userEmail.endsWith('@scaler.com')) {
-          navigate('/admin/dashboard');
-        } else {
-          supabase.auth.signOut();
+          await signOut(auth);
           setError('Only @scaler.com emails are allowed.');
         }
       }
     });
 
-    return () => subscription.unsubscribe();
+    // 2. Check if we are returning from an email link
+    const handleEmailLinkLogin = async () => {
+      if (isSignInWithEmailLink(auth, window.location.href)) {
+        let savedEmail = window.localStorage.getItem('emailForSignIn');
+        if (!savedEmail) {
+          savedEmail = window.prompt('Please provide your email for confirmation');
+        }
+        
+        if (savedEmail) {
+          setIsLoading(true);
+          try {
+            const result = await signInWithEmailLink(auth, savedEmail, window.location.href);
+            window.localStorage.removeItem('emailForSignIn');
+            
+            // Domain check
+            if (result.user.email && result.user.email.endsWith('@scaler.com')) {
+              navigate('/admin/dashboard');
+            } else {
+              await signOut(auth);
+              setError('Only @scaler.com emails are allowed.');
+            }
+          } catch (err) {
+            console.error('Error signing in with email link', err);
+            setError(err.message || 'Error processing the login link. It may have expired.');
+          } finally {
+            setIsLoading(false);
+          }
+        }
+      }
+    };
+
+    handleEmailLinkLogin();
+
+    return () => unsubscribe();
   }, [navigate]);
 
-  const validateEmail = (email) => {
-    if (!email) return 'Email is required';
-    if (!email.endsWith('@scaler.com')) {
+  const validateEmail = (e) => {
+    if (!e) return 'Email is required';
+    if (!e.endsWith('@scaler.com')) {
       return 'Only @scaler.com emails are allowed';
     }
     return null;
@@ -65,85 +80,21 @@ const Login = () => {
     setError('');
     setMessage('');
 
+    const actionCodeSettings = {
+      // URL you want to redirect back to. Ensure the domain for this
+      // URL is explicitly whitelisted in the Firebase console.
+      url: `${window.location.origin}/admin/login`,
+      handleCodeInApp: true,
+    };
+
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          // Dynamic redirect based on environment
-          emailRedirectTo: `${window.location.origin}/admin/dashboard`,
-          shouldCreateUser: true, // Allow automatic account creation for @scaler.com
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
+      if (!auth) throw new Error("Firebase Auth is not initialized. Check your credentials.");
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      window.localStorage.setItem('emailForSignIn', email);
       setMessage('Check your email for the magic login link!');
     } catch (err) {
       console.error('Auth error:', err);
       setError(err.message || 'Failed to send login link.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleOtpRequest = async () => {
-    const emailError = validateEmail(email);
-    if (emailError) {
-      setError(emailError);
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-    setMessage('');
-
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/admin/dashboard`,
-          shouldCreateUser: true, // Allow automatic account creation for @scaler.com
-        }
-      });
-
-      if (error) throw error;
-      
-      setIsOtpMode(true);
-      setMessage('A 6-digit code has been sent to your email.');
-    } catch (err) {
-      setError(err.message || 'Failed to send OTP.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    if (!otp || otp.length < 6) {
-      setError('Please enter a valid 6-digit code.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: otp,
-        type: 'email'
-      });
-
-      if (error) throw error;
-      
-      // Explicit navigation backup in case onAuthStateChange is slow
-      if (email.endsWith('@scaler.com')) {
-        navigate('/admin/dashboard');
-      }
-    } catch (err) {
-      setError(err.message || 'Invalid or expired code.');
     } finally {
       setIsLoading(false);
     }
@@ -172,76 +123,28 @@ const Login = () => {
           {error && <div className="error-message">👉 {error}</div>}
           {message && <div className="success-message">💡 {message}</div>}
           
-          {!isOtpMode ? (
-            <form onSubmit={handleEmailSubmit}>
-              <div className="form-group">
-                <label htmlFor="email">Work Email</label>
-                <input 
-                  id="email"
-                  type="email" 
-                  className="dark-input" 
-                  placeholder="name@scaler.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value.toLowerCase())}
-                  required
-                />
-              </div>
-              
-              <button 
-                type="submit" 
-                className="primary-login-btn" 
-                disabled={isLoading}
-              >
-                {isLoading ? <div className="loading-spinner"></div> : 'Continue with Email'}
-              </button>
-
-              <div className="login-divider">
-                <span>OR</span>
-              </div>
-
-              <button 
-                type="button" 
-                className="secondary-login-btn" 
-                onClick={handleOtpRequest}
-                disabled={isLoading}
-              >
-                Use OTP instead
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyOtp}>
-              <div className="form-group">
-                <label htmlFor="otp">Enter 6-digit Code</label>
-                <input 
-                  id="otp"
-                  type="text" 
-                  className="dark-input otp-input" 
-                  placeholder="000000"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  required
-                />
-              </div>
-              
-              <button 
-                type="submit" 
-                className="primary-login-btn" 
-                disabled={isLoading}
-              >
-                {isLoading ? <div className="loading-spinner"></div> : 'Verify & Login'}
-              </button>
-
-              <button 
-                type="button" 
-                className="text-btn" 
-                onClick={() => setIsOtpMode(false)}
-                disabled={isLoading}
-              >
-                ← Back to Magic Link
-              </button>
-            </form>
-          )}
+          <form onSubmit={handleEmailSubmit}>
+            <div className="form-group">
+              <label htmlFor="email">Work Email</label>
+              <input 
+                id="email"
+                type="email" 
+                className="dark-input" 
+                placeholder="name@scaler.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                required
+              />
+            </div>
+            
+            <button 
+              type="submit" 
+              className="primary-login-btn" 
+              disabled={isLoading}
+            >
+              {isLoading ? <div className="loading-spinner"></div> : 'Send Magic Link'}
+            </button>
+          </form>
         </div>
         
         <div className="login-footer">

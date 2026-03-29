@@ -48,11 +48,9 @@ const isVercel = process.env.VERCEL === '1';
 const dbPath = isVercel ? '/tmp/scaler.db' : 'scaler.db';
 const db = new Database(dbPath, { verbose: console.log });
 
-// Logging for OAuth Debugging (Step 8)
-// Logging for Supabase Auth Check
-console.log('--- Supabase Auth Check ---');
-console.log('SUPABASE_URL exists:', !!process.env.SUPABASE_URL);
-console.log('SUPABASE_ANON_KEY exists:', !!process.env.SUPABASE_ANON_KEY);
+// Logging for Firebase Auth Check
+console.log('--- Firebase Admin Auth Check ---');
+console.log('FIREBASE_SERVICE_ACCOUNT_KEY exists:', !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 console.log('---------------------------');
 
 app.use(cors({

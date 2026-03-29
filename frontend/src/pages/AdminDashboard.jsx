@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, LayoutDashboard, Users, FileText, Settings, Search, Plus, Edit2, Trash2, Eye, RefreshCw, TrendingUp, Bell, User } from 'lucide-react';
 import '../styles/AdminDashboard.css';
 import getApiBaseUrl from '../utils/apiConfig';
-import { supabase } from '../utils/supabaseClient';
+import { auth } from '../utils/firebaseClient';
+import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { fetchWithAuth } from '../utils/apiAuth';
 
 const AdminDashboard = () => {
@@ -65,24 +66,19 @@ const AdminDashboard = () => {
       } catch (error) {
         console.error('Backend validation error:', error);
         if (!unmounted) {
-          await supabase.auth.signOut();
+          await firebaseSignOut(auth);
           navigate('/admin/login');
         }
       }
     };
 
-    const checkAuth = async () => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('--- ADMIN DASHBOARD: STARTING AUTH CHECK ---');
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        console.log('Initial getSession returned:', session ? 'Valid Session' : 'Null Session', 'Error:', error);
-        if (error) throw error;
-        
-        if (!session) {
-          // If magic link token might still be processing inside the hashtag fragment
-          if (window.location.hash.includes('access_token')) {
-             console.log('Magic link token detected in URL hash, holding off redirect to login to allow listener to parse...');
+        if (!user) {
+          // If magic link token might still be processing inside the URL
+          if (window.location.href.includes('apiKey=') || window.location.href.includes('oobCode=')) {
+             console.log('Magic link token detected in URL, holding off redirect to login to allow listener to parse...');
              return;
           }
           console.log('No session, no hash. Redirecting back to Login.');
@@ -96,23 +92,11 @@ const AdminDashboard = () => {
         console.error('Initial check error critical failure:', error);
         if (!unmounted) navigate('/admin/login');
       }
-    };
-    
-    checkAuth();
-
-    // Attach listener to pick up where checkAuth left off (if deferred via magic link)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth event:', event);
-      if (session) {
-        verifyBackendSession();
-      } else if (event === 'SIGNED_OUT') {
-        if (!unmounted) navigate('/admin/login');
-      }
     });
 
     return () => {
       unmounted = true;
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, [navigate, API_URL]);
 
@@ -202,7 +186,7 @@ const AdminDashboard = () => {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await firebaseSignOut(auth);
       navigate('/admin/login');
     } catch (error) {
       console.error('Logout failed:', error);

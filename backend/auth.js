@@ -1,21 +1,27 @@
-const { createClient } = require('@supabase/supabase-js');
-const jwt = require('jsonwebtoken');
+const admin = require('firebase-admin');
 
-// Lazy Initialize Supabase client
-let supabase = null;
-const getSupabase = () => {
-  if (supabase) return supabase;
+// Lazy Initialize Firebase Admin client
+let firebaseApp = null;
+const getFirebaseAdmin = () => {
+  if (firebaseApp) return firebaseApp;
   
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  
-  if (!url || !key) {
-    console.warn('⚠️ Supabase configuration missing! Admin Auth will FAIL.');
+  try {
+    // Requires FIREBASE_SERVICE_ACCOUNT_KEY env var (JSON stringified service account)
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}');
+    
+    if (!serviceAccount.project_id) {
+      console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT_KEY missing or invalid! Admin Auth will FAIL.');
+      return null;
+    }
+    
+    firebaseApp = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    return firebaseApp;
+  } catch (error) {
+    console.error('Failed to initialize Firebase Admin:', error);
     return null;
   }
-  
-  supabase = createClient(url, key);
-  return supabase;
 };
 
 // Check if user is authorized admin
@@ -49,14 +55,13 @@ const ADMIN_EMAILS = {
 };
 
 /**
- * Middleware to protect admin routes using Supabase Session
- * This replaces the previous Google OAuth/Custom JWT flow.
+ * Middleware to protect admin routes using Firebase JWT Token
  */
 const authenticateAdmin = async (req, res, next) => {
   try {
     // Get token from Authorization header or cookie
     const authHeader = req.headers.authorization;
-    let token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : req.cookies?.sb_access_token;
+    let token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : req.cookies?.fb_access_token;
 
     if (!token) {
       // Fallback for browser-based requests if using our custom cookie
@@ -67,38 +72,33 @@ const authenticateAdmin = async (req, res, next) => {
       return res.status(401).json({ error: 'Authentication required. No token found.' });
     }
 
-    // Verify token with Supabase
-    const supabaseClient = getSupabase();
-    if (!supabaseClient) {
-      return res.status(500).json({ error: 'Supabase auth service is not configured on the server.' });
+    // Verify token with Firebase
+    const firebaseAdmin = getFirebaseAdmin();
+    if (!firebaseAdmin) {
+      return res.status(500).json({ error: 'Firebase Admin service is not configured on the server.' });
     }
-    const { data: { user }, error } = await supabaseClient.auth.getUser(token);
+    
+    let decodedToken;
+    try {
+      decodedToken = await admin.auth().verifyIdToken(token);
+    } catch (err) {
+      console.error('Firebase token verification error:', err.message);
+      return res.status(401).json({ error: 'Invalid or expired session token.' });
+    }
 
-    if (error || !user) {
-      console.error('Supabase auth error:', error?.message);
-      return res.status(401).json({ error: 'Invalid or expired session.' });
-    }
+    const userEmail = decodedToken.email;
 
     // Strict Domain Validation (Priority 1)
-    if (!isAuthorizedAdmin(user.email)) {
-      console.log('❌ Unauthorized domain:', user.email);
+    if (!isAuthorizedAdmin(userEmail)) {
+      console.log('❌ Unauthorized domain:', userEmail);
       return res.status(403).json({ error: 'Access denied. Only @scaler.com emails are allowed.' });
     }
 
-    // Whitelist check (Optional but recommended by requirement)
-    // If you want more strict control, you can uncomment this part to ONLY allow emails in the map
-    /*
-    if (!ADMIN_EMAILS[user.email]) {
-       console.log('❌ User not in whitelist:', user.email);
-       return res.status(403).json({ error: 'Access denied. Email not in whitelist.' });
-    }
-    */
-
     // Set user info for RBAC
     req.user = {
-      email: user.email,
-      id: user.id,
-      role: ADMIN_EMAILS[user.email] || ROLES.SUPPORT // Default role mapping
+      email: userEmail,
+      id: decodedToken.uid,
+      role: ADMIN_EMAILS[userEmail] || ROLES.SUPPORT // Default role mapping
     };
 
     next();
