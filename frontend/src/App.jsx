@@ -16,7 +16,17 @@ const Auth0ProviderWithRedirectCallback = ({ children }) => {
   const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID || '';
   
   if (!domain || !clientId) {
-     console.warn('⚠️ Auth0 credentials missing in environment variables.');
+     return (
+       <div style={{ textAlign: 'center', marginTop: '100px', padding: '20px', fontFamily: 'sans-serif' }}>
+          <h2 style={{ color: '#ff4d4f' }}>🚨 Auth0 Configuration Missing</h2>
+          <p style={{ color: '#fff', fontSize: '1.2rem', maxWidth: '600px', margin: '0 auto' }}>
+            The Auth0 variables (<code>VITE_AUTH0_DOMAIN</code> and <code>VITE_AUTH0_CLIENT_ID</code>) are empty or missing from your environment. 
+            <br/><br/>
+            <strong>Are you testing locally?</strong> Make sure you created a <code>.env</code> file with those variables. <br/>
+            <strong>Are you on Railway?</strong> Make sure to add them to your Railway Variables dashboard and redeploy.
+          </p>
+       </div>
+     );
   }
 
   return (
