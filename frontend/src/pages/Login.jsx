@@ -43,15 +43,19 @@ const Login = () => {
     setError('');
     setMessage('');
 
+    console.log('[Auth0 Debug] handleEmailSubmit fired for email:', email);
+
     try {
+      console.log('[Auth0 Debug] About to execute loginWithRedirect...');
       await loginWithRedirect({
         authorizationParams: {
           connection: 'email',
           login_hint: email
         }
       });
+      console.log('[Auth0 Debug] loginWithRedirect promise resolved (browser should be navigating away)');
     } catch (err) {
-      console.error('Auth0 routing error:', err);
+      console.error('[Auth0 Debug] Exception caught during routing:', err);
       setError(err.message || 'Failed to initialize Auth0 passwordless login.');
       setIsLoading(false);
     }
