@@ -1,14 +1,18 @@
 const { auth: auth0Middleware } = require('express-oauth2-jwt-bearer');
 
 const checkJwt = (req, res, next) => {
-  if (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_AUDIENCE) {
-    console.warn('⚠️ AUTH0_DOMAIN or AUTH0_AUDIENCE missing! API Auth will FAIL unconditionally.');
+  // Inherit environment directly from the universal unified Railway server variables
+  const domain = process.env.AUTH0_DOMAIN || process.env.VITE_AUTH0_DOMAIN;
+  const audience = process.env.AUTH0_AUDIENCE || process.env.VITE_AUTH0_CLIENT_ID;
+
+  if (!domain || !audience) {
+    console.warn('⚠️ OAuth Domain or Client ID missing! API Auth will FAIL unconditionally.');
     return res.status(500).json({ error: 'OAuth2 configuration missing on the server.' });
   }
 
   const jwtMiddleware = auth0Middleware({
-    audience: process.env.AUTH0_AUDIENCE,
-    issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}/`,
+    audience: audience,
+    issuerBaseURL: `https://${domain.replace(/\/$/, '')}/`,
   });
   
   jwtMiddleware(req, res, next);
