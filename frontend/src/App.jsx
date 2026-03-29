@@ -12,7 +12,7 @@ const Auth0ProviderWithRedirectCallback = ({ children }) => {
     navigate((appState && appState.returnTo) || '/admin/dashboard', { replace: true });
   };
 
-  const domain = import.meta.env.VITE_AUTH0_DOMAIN || '';
+  const domain = (import.meta.env.VITE_AUTH0_DOMAIN || '').replace(/\/$/, '');
   const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID || '';
   const audience = import.meta.env.VITE_AUTH0_AUDIENCE || '';
   

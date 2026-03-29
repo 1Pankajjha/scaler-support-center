@@ -25,13 +25,17 @@ const Login = () => {
     setIsLoading(true);
     setError('');
 
+    console.log('[Auth0 Debug] Google Login Button Clicked');
+
     try {
-      console.log('[Auth0 Debug] Executing Google OAuth login request...');
+      console.log('[Auth0 Debug] About to execute loginWithRedirect...');
       await loginWithRedirect({
         authorizationParams: {
-          connection: 'google-oauth2'
+          connection: 'google-oauth2',
+          redirect_uri: 'https://scaler-support-center-production.up.railway.app/admin/dashboard'
         }
       });
+      console.log('[Auth0 Debug] loginWithRedirect fully resolved (browser should be navigating to Google)');
     } catch (err) {
       console.error('[Auth0 Debug] Exception caught during routing:', err);
       setError(err.message || 'Failed to initialize Auth0 Google login.');
