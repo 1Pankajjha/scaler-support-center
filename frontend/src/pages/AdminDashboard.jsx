@@ -117,17 +117,6 @@ const AdminDashboard = () => {
     };
   }, [navigate, API_URL, isAuthenticated, auth0IsLoading, user, getIdTokenClaims, logout]);
 
-  if (isAuthLoading) {
-    return (
-      <div className="login-container">
-        <div className="login-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
-          <div className="loading-spinner"></div>
-          <p style={{ marginTop: '20px', color: '#bfc4cc' }}>Authenticating...</p>
-        </div>
-      </div>
-    );
-  }
-
 
   const fetchPopularTopics = async () => {
     console.log('=== ADMIN DASHBOARD: fetchPopularTopics ===');
@@ -431,6 +420,17 @@ const AdminDashboard = () => {
     const matchesCat = categoryFilter === 'All' || a.category === categoryFilter;
     return matchesSearch && matchesCat;
   });
+
+  if (isAuthLoading) {
+    return (
+      <div className="login-container">
+        <div className="login-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
+          <div className="loading-spinner"></div>
+          <p style={{ marginTop: '20px', color: '#bfc4cc' }}>Authenticating...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-layout">
