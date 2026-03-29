@@ -61,13 +61,7 @@ const Login = () => {
           client_id: clientId,
           connection: 'email',
           email: email,
-          send: 'link',
-          authParams: {
-            redirect_uri: `${window.location.origin}/admin/dashboard`,
-            // Provide scopes and request a token/code payload for the callback
-            response_type: 'token id_token',
-            scope: 'openid profile email'
-          }
+          send: 'link'
         }),
       });
 
