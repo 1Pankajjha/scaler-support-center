@@ -14,7 +14,14 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('faqs');
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   
-  const { isAuthenticated, isLoading: auth0IsLoading, user, getAccessTokenSilently, logout } = useAuth0();
+  const { isAuthenticated, isLoading: auth0IsLoading, user, getAccessTokenSilently, logout, error: auth0Error } = useAuth0();
+  
+  // Track Auth0 SDK internal errors natively to prevent silent bounce-backs
+  useEffect(() => {
+    if (auth0Error) {
+      console.error('🚨 [Auth0 SDK FATAL ERROR]:', auth0Error);
+    }
+  }, [auth0Error]);
   
   // Data States
   const [articles, setArticles] = useState([]);
