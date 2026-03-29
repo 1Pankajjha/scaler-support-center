@@ -41,20 +41,46 @@ const Login = () => {
 
     setIsLoading(true);
     setError('');
-    setMessage('Redirecting to secure login...');
+    setMessage('');
 
     try {
-      // Use connection: 'email' to explicitly force Auth0 passwordless magic link flow
-      await loginWithRedirect({
-        authorizationParams: {
+      const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN;
+      const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
+
+      if (!auth0Domain || !clientId) {
+        throw new Error("Missing Auth0 configuration in environment variables.");
+      }
+
+      // Directly call Auth0's Passwordless API to explicitly bypass Universal Login rendering issues
+      const response = await fetch(`https://${auth0Domain}/passwordless/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: clientId,
           connection: 'email',
-          login_hint: email
-        }
+          email: email,
+          send: 'link',
+          authParams: {
+            redirect_uri: `${window.location.origin}/admin/dashboard`,
+            // Provide scopes and request a token/code payload for the callback
+            response_type: 'token id_token',
+            scope: 'openid profile email'
+          }
+        }),
       });
-      // Auth0 handles the redirect boundary from here, taking them to the waiting screen
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error_description || errorData.error || 'Failed to send Auth0 magic link.');
+      }
+
+      setMessage('💡 Magic link sent! Please check your email inbox to proceed.');
+      setIsLoading(false);
     } catch (err) {
-      console.error('Auth0 routing error:', err);
-      setError(err.message || 'Failed to initialize Auth0 login.');
+      console.error('Auth0 Passwordless API error:', err);
+      setError(err.message || 'Failed to initialize Auth0 passwordless login.');
       setIsLoading(false);
     }
   };
