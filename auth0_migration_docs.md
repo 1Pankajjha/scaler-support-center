@@ -44,6 +44,9 @@ VITE_AUTH0_DOMAIN=your_auth0_tenant_domain
 
 # Your Auth0 SPA Application Client ID
 VITE_AUTH0_CLIENT_ID=your_auth0_client_id
+
+# Your API Identifier (Required to generate backend JWTs, NOT Opaque Tokens)
+VITE_AUTH0_AUDIENCE=your_auth0_api_audience
 ```
 
 ### Backend Configuration (`backend/.env` & Railway)
