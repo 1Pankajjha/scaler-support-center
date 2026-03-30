@@ -806,7 +806,7 @@ const Home = () => {
               <>
                 <div className="escalation-header">
                   <h2>Quick check before escalating</h2>
-                  <p>Make sure you've completed these steps:</p>
+                  <p>Please confirm all of the following before raising an escalation:</p>
                 </div>
                 
                 <div className="checklist-section">
