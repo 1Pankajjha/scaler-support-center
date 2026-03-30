@@ -271,63 +271,80 @@
 
 .topics-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
+  grid-template-columns: repeat(3, 1fr) !important;
   gap: 1.5rem !important;
-  margin-bottom: 5rem;
+  margin-bottom: 3.5rem !important;
+}
+
+@media (max-width: 1024px) {
+  .topics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .topics-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .topic-card {
+    min-height: auto !important;
+  }
 }
 
 .topic-card {
   background-color: #ffffff !important;
-  padding: 32px !important;
+  padding: 24px !important;
   border: 1px solid #e5e7eb !important;
-  border-radius: 24px !important;
+  border-radius: 20px !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
   gap: 0 !important;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   cursor: pointer !important;
   position: relative !important;
   overflow: hidden !important;
-  min-height: 320px !important;
+  min-height: 280px !important;
+  height: 100% !important;
 }
 
 .topic-card:hover {
-  transform: translateY(-8px) !important;
+  transform: translateY(-6px) !important;
   border-color: #2563EB !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.08), 0 8px 12px -5px rgba(0, 0, 0, 0.03) !important;
 }
 
 .topic-card-bg {
   position: absolute;
   top: -20px;
   right: -20px;
-  width: 180px;
-  height: 180px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
   filter: blur(40px);
-  opacity: 0.15;
+  opacity: 0.12;
   pointer-events: none;
   z-index: 0;
-  transition: transform 0.3s ease;
+  transition: transform 0.4s ease;
 }
 
 .topic-card:hover .topic-card-bg {
-  transform: scale(1.1);
+  transform: scale(1.15);
 }
 
 .topic-icon-wrapper-gradient {
-  width: 56px !important;
-  height: 56px !important;
+  width: 52px !important;
+  height: 52px !important;
   border-radius: 12px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  margin-bottom: 24px !important;
+  margin-bottom: 20px !important;
   position: relative !important;
   z-index: 1 !important;
   color: white !important;
+  flex-shrink: 0 !important;
 }
 
 .topic-info {
@@ -335,24 +352,27 @@
   z-index: 1 !important;
   flex: 1 !important;
   width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .topic-info h3 {
-  font-size: 20px !important;
+  font-size: 18px !important;
   font-weight: 700 !important;
-  color: #000000 !important;
-  margin-bottom: 12px !important;
-  line-height: 1.2 !important;
+  color: #0F172A !important;
+  margin-bottom: 8px !important;
+  line-height: 1.25 !important;
   font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
 .topic-info p {
   font-size: 14px !important;
   font-weight: 400 !important;
-  color: #6B7280 !important;
-  line-height: 1.5 !important;
-  margin-bottom: 24px !important;
+  color: #64748B !important;
+  line-height: 1.4 !important;
+  margin-bottom: 20px !important;
   font-family: 'Plus Jakarta Sans', sans-serif !important;
+  flex: 1 !important;
 }
 
 .topic-meta {
@@ -362,40 +382,41 @@
   margin-top: auto !important;
   width: 100% !important;
   z-index: 1 !important;
+  padding-top: 12px !important;
 }
 
 .article-count-badge {
-  font-size: 12px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
-  color: #4B5563 !important;
-  background-color: #F3F4F6 !important;
-  padding: 6px 14px !important;
-  border-radius: 8px !important;
+  color: #475569 !important;
+  background-color: #F1F5F9 !important;
+  padding: 4px 12px !important;
+  border-radius: 6px !important;
 }
 
 .topic-arrow {
   color: #2563EB !important;
-  transition: transform 0.2s ease !important;
+  transition: transform 0.3s ease !important;
 }
 
 .topic-card:hover .topic-arrow {
-  transform: translateX(4px) !important;
+  transform: translateX(3px) !important;
 }
 
 .popular-badge {
   position: absolute !important;
-  top: 24px !important;
-  right: 24px !important;
+  top: 20px !important;
+  right: 20px !important;
   background: #2563EB !important;
   color: white !important;
   padding: 4px 10px !important;
   border-radius: 20px !important;
-  font-size: 11px !important;
+  font-size: 10px !important;
   font-weight: 700 !important;
   display: flex !important;
   align-items: center !important;
   gap: 4px !important;
-  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3) !important;
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2) !important;
   z-index: 2 !important;
 }
 
