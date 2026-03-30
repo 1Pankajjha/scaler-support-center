@@ -360,14 +360,17 @@ const Home = () => {
   const getCategoryColors = (title) => {
     const colors = {
       'Course & Curriculum': { iconColor: '#8B5CF6', bgColor: 'from-purple-50 to-purple-100' },
+      'Course Curriculum': { iconColor: '#8B5CF6', bgColor: 'from-purple-50 to-purple-100' },
       'Billing & Payments': { iconColor: '#EC4899', bgColor: 'from-pink-50 to-rose-100' },
+      'Payments & EMI': { iconColor: '#EC4899', bgColor: 'from-pink-50 to-rose-100' },
       'Certificates': { iconColor: '#10B981', bgColor: 'from-emerald-50 to-green-100' },
       'Account & Login': { iconColor: '#F59E0B', bgColor: 'from-orange-50 to-amber-100' },
       'Mentorship': { iconColor: '#0EA5E9', bgColor: 'from-blue-50 to-cyan-100' },
       'Placements': { iconColor: '#6366F1', bgColor: 'from-indigo-50 to-purple-100' },
       'Account & Access': { iconColor: '#F59E0B', bgColor: 'from-orange-50 to-amber-100' },
       'Career & Placements': { iconColor: '#6366F1', bgColor: 'from-indigo-50 to-purple-100' },
-      'Certifications': { iconColor: '#10B981', bgColor: 'from-emerald-50 to-green-100' }
+      'Certifications': { iconColor: '#10B981', bgColor: 'from-emerald-50 to-green-100' },
+      'Platform & Tech': { iconColor: '#64748b', bgColor: 'from-slate-50 to-slate-200' }
     };
     return colors[title] || { iconColor: '#6B7280', bgColor: 'from-gray-50 to-gray-100' };
   };
@@ -392,11 +395,15 @@ const Home = () => {
     if (cat.description) return cat.description;
     const descs = {
       'Course & Curriculum': "Syllabus, modules, schedule, content queries",
+      'Course Curriculum': "Syllabus, modules, schedule, content queries",
       'Billing & Payments': "EMI, refunds, invoices, payment issues",
+      'Payments & EMI': "EMI, refunds, invoices, payment issues",
       'Certificates': "Completion certificates, downloads",
       'Account & Login': "Password reset, profile, access issues",
       'Mentorship': "Mentor sessions, scheduling, feedback",
-      'Placements': "Job referrals, mock interviews, career support"
+      'Placements': "Job referrals, mock interviews, career support",
+      'Career & Placements': "Job referrals, mock interviews, career support",
+      'Platform & Tech': "Video, platform, and content access issues"
     };
     return descs[cat.title] || `Explore articles in ${cat.title}`;
   };
