@@ -37,17 +37,11 @@ const { logger, requestLogger } = require('./utils/logger');
 const app = express();
 const port = process.env.PORT || 5001;
 
-// The request handler must be the first middleware on the app
-if (process.env.SENTRY_DSN) {
-  app.use(Sentry.Handlers.requestHandler());
-}
-
+// The request handler is handled automatically by Sentry v8+ instrumentation
 // Attach request logger for structured records 
 app.use(requestLogger);
 
-console.log('🚀 BE SERVER STARTING...');
-console.log(`📡 PORT assigned: ${port}`);
-console.log(`🌐 NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+logger.info('SERVER_STARTING', { port, node_env: process.env.NODE_ENV || 'development' });
 
 // --- SECURITY: RATE LIMITING (Priority 12) ---
 const apiLimiter = rateLimit({
@@ -515,10 +509,10 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// --- START SERVER ---
 // The error handler must be before any other error middleware and after all controllers
+// Sentry v8+ Express integration:
 if (process.env.SENTRY_DSN) {
-  app.use(Sentry.Handlers.errorHandler());
+  Sentry.setupExpressErrorHandler(app);
 }
 
 app.listen(port, '0.0.0.0', () => {
