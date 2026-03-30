@@ -145,6 +145,14 @@ if (categoryCount.count === 0) {
   });
 }
 
+// --- BOOTSTRAP LOGGING: Article Inventory ---
+const articleInventory = db.prepare('SELECT count(*) as count FROM articles').get();
+const categoryInventory = db.prepare('SELECT count(*) as count FROM categories').get();
+console.log('--- DATABASE INVENTORY ON STARTUP ---');
+console.log(`📦 ARTICLES: ${articleInventory.count}`);
+console.log(`📂 CATEGORIES: ${categoryInventory.count}`);
+console.log('-------------------------------------');
+
 // --- HEALTH CHECK API ---
 app.get('/api/health', (req, res) => {
   console.log('💚 Health check hit: /api/health');

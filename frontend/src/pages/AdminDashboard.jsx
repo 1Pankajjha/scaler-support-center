@@ -240,7 +240,8 @@ const AdminDashboard = () => {
       }
       
       const data = await res.json();
-      console.log('Articles data received:', data);
+      console.log(`📦 ARTICLES SYNCED: ${data.length} records found`);
+      console.log('Detailed data received:', data);
       setArticles(data);
     } catch (e) {
       console.error('=== FAILED TO FETCH ARTICLES ===');
