@@ -359,20 +359,20 @@ const Home = () => {
 
   const getCategoryColors = (title) => {
     const colors = {
-      'Course & Curriculum': { iconColor: '#8B5CF6', bgColor: 'from-purple-50 to-purple-100' },
-      'Course Curriculum': { iconColor: '#8B5CF6', bgColor: 'from-purple-50 to-purple-100' },
-      'Billing & Payments': { iconColor: '#EC4899', bgColor: 'from-pink-50 to-rose-100' },
-      'Payments & EMI': { iconColor: '#EC4899', bgColor: 'from-pink-50 to-rose-100' },
-      'Certificates': { iconColor: '#10B981', bgColor: 'from-emerald-50 to-green-100' },
-      'Account & Login': { iconColor: '#F59E0B', bgColor: 'from-orange-50 to-amber-100' },
-      'Mentorship': { iconColor: '#0EA5E9', bgColor: 'from-blue-50 to-cyan-100' },
-      'Placements': { iconColor: '#6366F1', bgColor: 'from-indigo-50 to-purple-100' },
-      'Account & Access': { iconColor: '#F59E0B', bgColor: 'from-orange-50 to-amber-100' },
-      'Career & Placements': { iconColor: '#6366F1', bgColor: 'from-indigo-50 to-purple-100' },
-      'Certifications': { iconColor: '#10B981', bgColor: 'from-emerald-50 to-green-100' },
-      'Platform & Tech': { iconColor: '#64748b', bgColor: 'from-slate-50 to-slate-200' }
+      'Course & Curriculum': { iconColor: '#A855F7', blobColor: 'rgba(168, 85, 247, 0.15)' },
+      'Course Curriculum': { iconColor: '#A855F7', blobColor: 'rgba(168, 85, 247, 0.15)' },
+      'Billing & Payments': { iconColor: '#BE185D', blobColor: 'rgba(190, 24, 93, 0.15)' },
+      'Payments & EMI': { iconColor: '#BE185D', blobColor: 'rgba(190, 24, 93, 0.15)' },
+      'Certificates': { iconColor: '#65A30D', blobColor: 'rgba(101, 163, 13, 0.15)' },
+      'Account & Login': { iconColor: '#EA580C', blobColor: 'rgba(234, 88, 12, 0.15)' },
+      'Mentorship': { iconColor: '#2563EB', blobColor: 'rgba(37, 99, 235, 0.15)' },
+      'Placements': { iconColor: '#7C3AED', blobColor: 'rgba(124, 58, 237, 0.15)' },
+      'Account & Access': { iconColor: '#EA580C', blobColor: 'rgba(234, 88, 12, 0.15)' },
+      'Career & Placements': { iconColor: '#7C3AED', blobColor: 'rgba(124, 58, 237, 0.15)' },
+      'Certifications': { iconColor: '#65A30D', blobColor: 'rgba(101, 163, 13, 0.15)' },
+      'Platform & Tech': { iconColor: '#475569', blobColor: 'rgba(71, 85, 105, 0.15)' }
     };
-    return colors[title] || { iconColor: '#6B7280', bgColor: 'from-gray-50 to-gray-100' };
+    return colors[title] || { iconColor: '#6B7280', blobColor: 'rgba(107, 114, 128, 0.15)' };
   };
 
   const getCategoryIcon = (title) => {
@@ -584,32 +584,30 @@ const Home = () => {
           {topics.map((topic, idx) => {
             const colors = getCategoryColors(topic.title);
             return (
-              <div key={idx} className="topic-card enhanced-gradient" onClick={() => setViewCategory(topic.title)}>
+              <div key={idx} className="topic-card" onClick={() => setViewCategory(topic.title)}>
                 {/* Popular badge for Certificates */}
-                {topic.title === 'Certificates' && (
+                {(topic.title === 'Certificates' || topic.title === 'Certifications') && (
                   <span className="popular-badge">⭐ Popular</span>
                 )}
                 
-                {/* Layer 1: Full card pastel blob */}
-                <div className={`topic-card-bg ${colors.bgColor}`}></div>
+                {/* Visual Blob background */}
+                <div className="topic-card-bg" style={{ backgroundColor: colors.blobColor }}></div>
                 
-                {/* Layer 2: Icon glow halo */}
-                <div className="topic-icon-glow"></div>
-                
-                {/* Layer 3: Icon pill with gradient */}
-                <div className="topic-icon-wrapper-gradient" style={{ background: `linear-gradient(135deg, ${colors.iconColor}, ${colors.iconColor}dd)` }}>
-                  <div className="topic-icon-inner">
-                    {topic.icon}
-                  </div>
+                {/* Icon Squircle with Solid Figma background */}
+                <div className="topic-icon-wrapper-gradient" style={{ backgroundColor: colors.iconColor }}>
+                  {topic.icon}
                 </div>
                 
                 <div className="topic-info">
                   <h3>{topic.title}</h3>
                   <p>{topic.desc}</p>
-                  <div className="topic-meta">
-                    <span className="article-count-badge">{topic.count || 0} {topic.count === 1 ? 'article' : 'articles'}</span>
-                    <ArrowRight className="topic-arrow" size={20} />
-                  </div>
+                </div>
+
+                <div className="topic-meta">
+                  <span className="article-count-badge">
+                    {topic.count || 0} {topic.count === 1 ? 'article' : 'articles'}
+                  </span>
+                  <ArrowRight className="topic-arrow" size={20} />
                 </div>
               </div>
             );
