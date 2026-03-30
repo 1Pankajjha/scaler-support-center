@@ -421,6 +421,115 @@ const Home = () => {
     ];
     topics = predefinedTopics.map(t => ({ ...t, count: categoryCounts[t.id] || 0 }));
   }
+  const renderArticleContent = (content) => {
+    if (!content) return null;
+
+    // First split by double newline for structural separation
+    const elements = content.split(/\n\n+/);
+
+    return elements.map((element, idx) => {
+      const trimmed = element.trim();
+      if (!trimmed) return null;
+
+      // 1. QUICK ANSWER (Explicit marker or [[QUICK ANSWER]])
+      if (trimmed.toLowerCase().includes('[quick answer]') || trimmed.toLowerCase().includes('[[quick answer]]')) {
+        const text = trimmed.replace(/\[\[?quick answer\]\]?:?\s*/gi, '');
+        return (
+          <div key={idx} className="callout-box quick-answer-box">
+            <div className="callout-icon">🎯</div>
+            <div className="callout-content">
+              <span className="callout-header">Quick Answer</span>
+              {text}
+            </div>
+          </div>
+        );
+      }
+
+      // 2. WARNING / IMPORTANT
+      if (trimmed.toLowerCase().includes('[warning]') || trimmed.toLowerCase().includes('[[warning]]') || trimmed.toLowerCase().includes('[important]')) {
+        const text = trimmed.replace(/\[\[?(warning|important)\]\]?:?\s*/gi, '');
+        return (
+          <div key={idx} className="callout-box warning-box">
+            <div className="callout-icon">⚠️</div>
+            <div className="callout-content">
+              {text}
+            </div>
+          </div>
+        );
+      }
+
+      // 3. TIP / PRO-TIP
+      if (trimmed.toLowerCase().includes('[tip]') || trimmed.toLowerCase().includes('[[tip]]') || trimmed.toLowerCase().includes('[pro-tip]')) {
+        const text = trimmed.replace(/\[\[?((pro-)?tip)\]\]?:?\s*/gi, '');
+        return (
+          <div key={idx} className="callout-box tip-box">
+            <div className="callout-icon">💡</div>
+            <div className="callout-content">
+              <span className="callout-header">Pro Tip</span>
+              {text}
+            </div>
+          </div>
+        );
+      }
+
+      // 4. Mapped Headings (Markdown-ish)
+      if (trimmed.startsWith('### ')) {
+        return <h3 key={idx}>{trimmed.replace('### ', '')}</h3>;
+      }
+
+      // 5. BULLETED LISTS
+      if (trimmed.includes('\n*') || trimmed.startsWith('* ')) {
+        const lines = trimmed.split('\n');
+        const listItems = [];
+        let introText = "";
+        
+        lines.forEach(line => {
+          if (line.trim().startsWith('* ')) {
+            listItems.push(line.trim().substring(2));
+          } else if (line.trim()) {
+            introText += (introText ? " " : "") + line.trim();
+          }
+        });
+
+        // SPECIAL TRANSFORMATION: "How it works" style bullets
+        // If there are exactly 3-4 short bullets, we use a grid
+        const useGrid = listItems.length >= 2 && listItems.length <= 6 && listItems.every(li => li.length < 60);
+
+        if (useGrid) {
+          return (
+            <div key={idx} className="how-it-works-section">
+              {introText && <p style={{marginBottom: '1rem', fontWeight: 600}}>{introText}</p>}
+              <div className="how-it-works-grid">
+                {listItems.map((item, i) => {
+                  const parts = item.split(' ');
+                  const firstWordIsEmoji = /[\u{1F300}-\u{1F9FF}]/u.test(parts[0]);
+                  return (
+                    <div key={i} className="how-it-works-tile shadow-soft">
+                      <div className="how-it-works-emoji">{firstWordIsEmoji ? parts[0] : '✨'}</div>
+                      <div className="how-it-works-text">{firstWordIsEmoji ? parts.slice(1).join(' ') : item}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={idx} className="content-list-block">
+            {introText && <p>{introText}</p>}
+            <ul>
+              {listItems.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+        );
+      }
+
+      // 6. DEFAULT PARAGRAPH
+      return <p key={idx}>{trimmed}</p>;
+    });
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -726,7 +835,7 @@ const Home = () => {
       {/* Enhanced Unified Category/Article Modal */}
       {(viewCategory || viewArticle) && (
         <div className="modal-overlay" onClick={() => { setViewCategory(null); setViewArticle(null); }}>
-          <div className="category-modal" onClick={e => e.stopPropagation()}>
+          <div className={viewArticle ? "article-viewer-modal" : "category-modal"} onClick={e => e.stopPropagation()}>
             
             {viewArticle ? (
               <div className="article-interior-view">
@@ -734,12 +843,15 @@ const Home = () => {
                   <button className="back-link" onClick={() => setViewArticle(null)}>
                     <ArrowLeft size={16} /> Back
                   </button>
+                  <button className="close-btn" onClick={() => { setViewArticle(null); setViewCategory(null); }}>✕ Close</button>
                 </div>
                 <div className="article-viewer-content">
                   <span className="preview-cat-muted">{viewArticle.category}</span>
                   <h2>{viewArticle.title}</h2>
-                  <p className="preview-meta">Last updated: {formatDate(viewArticle.updated_at)}</p>
-                  <div className="preview-body">{viewArticle.content}</div>
+                  <div className="preview-meta">
+                    <Clock size={16} /> Last updated: {formatDate(viewArticle.updated_at)}
+                  </div>
+                  <div className="preview-body">{renderArticleContent(viewArticle.content)}</div>
                   
                   <div className="helpful-row">
                     <span>Was this helpful?</span>
