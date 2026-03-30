@@ -428,6 +428,11 @@ const Home = () => {
     ];
     topics = predefinedTopics.map(t => ({ ...t, count: categoryCounts[t.id] || 0 }));
   }
+  const formatDate = (dateString) => {
+    const options = { month: 'short', day: 'numeric', year: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
