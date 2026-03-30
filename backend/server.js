@@ -61,12 +61,44 @@ const authLimiter = rateLimit({
 });
 
 // Apply global rate limit to all /api routes
+// --- HEALTH CHECK API (MOVED ABOVE RATE LIMITER) ---
+app.get('/api/health', (req, res) => {
+  try {
+    // Perform a dummy DB operation to verify connection health
+    const dbTest = db.prepare('SELECT 1').get();
+    
+    if (dbTest) {
+      res.json({ 
+        status: 'UP', 
+        components: {
+          database: { status: 'UP', engine: 'better-sqlite3' }
+        },
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      });
+    }
+  } catch (error) {
+    logger.error('CRITICAL: Health check failure', { error: error.message });
+    res.status(503).json({ 
+      status: 'DOWN', 
+      error: 'Database connection failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Explicit endpoint that Railway checks sometimes (public articles)
+app.get('/api/articles/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Apply global rate limit to all /api routes AFTER health checks
 app.use('/api/', apiLimiter);
 
 // Initialize SQLite DB (in-memory or file) 
 const isVercel = process.env.VERCEL === '1';
 const dbPath = isVercel ? '/tmp/scaler.db' : 'scaler.db';
-const db = new Database(dbPath, { verbose: console.log });
+const db = new Database(dbPath);
 
 // Logging for Auth0 Auth Check
 console.log('--- Auth0 Configuration Check ---');
@@ -172,38 +204,6 @@ console.log('--- DATABASE INVENTORY ON STARTUP ---');
 console.log(`📦 ARTICLES: ${articleInventory.count}`);
 console.log(`📂 CATEGORIES: ${categoryInventory.count}`);
 console.log('-------------------------------------');
-
-// --- HEALTH CHECK API (Enhanced with DB check) ---
-app.get('/api/health', (req, res) => {
-  try {
-    // Perform a dummy DB operation to verify connection health
-    const dbTest = db.prepare('SELECT 1').get();
-    
-    if (dbTest) {
-      res.json({ 
-        status: 'UP', 
-        components: {
-          database: { status: 'UP', engine: 'better-sqlite3' }
-        },
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
-      });
-    }
-  } catch (error) {
-    logger.error('CRITICAL: Health check failure', { error: error.message });
-    res.status(503).json({ 
-      status: 'DOWN', 
-      error: 'Database connection failed',
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Explicit endpoint that Railway checks sometimes (public articles)
-app.get('/api/articles/health', (req, res) => {
-  console.log('📗 Health check hit: /api/articles/health');
-  res.json({ status: 'ok' });
-});
 
 // --- PUBLIC ARTICLES (FAQs) API ---
 // Only show published articles to public

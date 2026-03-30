@@ -8,9 +8,9 @@
     "dev": "node server.js"
   },
   "dependencies": {
-    "@opentelemetry/auto-instrumentations-node": "^0.72.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.214.0",
-    "@opentelemetry/sdk-node": "^0.214.0",
+    "@opentelemetry/auto-instrumentations-node": "*",
+    "@opentelemetry/exporter-trace-otlp-http": "*",
+    "@opentelemetry/sdk-node": "*",
     "@sentry/node": "^10.46.0",
     "@sentry/profiling-node": "^10.46.0",
     "better-sqlite3": "^12.8.0",
