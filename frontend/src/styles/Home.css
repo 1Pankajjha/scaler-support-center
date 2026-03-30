@@ -1302,16 +1302,11 @@
   font-size: 1rem;
   text-decoration: none;
   transition: all 0.2s ease;
-  cursor: pointer;
+  cursor: default;
 }
 
 .help-emoji {
   font-size: 1rem;
-}
-
-.header-help-cta:hover {
-  color: #0f172a;
-  text-decoration: underline;
 }
 
 /* -------------------------------------------

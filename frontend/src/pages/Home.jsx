@@ -483,9 +483,9 @@ const Home = () => {
           </a>
         </div>
         <div className="header-right">
-          <a href="#" className="header-help-cta">
+          <span className="header-help-cta">
             <span className="help-emoji">👋</span> Need help?
-          </a>
+          </span>
         </div>
       </header>
 
