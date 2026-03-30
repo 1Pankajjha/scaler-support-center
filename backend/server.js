@@ -297,6 +297,55 @@ adminRoutes.delete('/articles/:id', authorizeRole([ROLES.ADMIN]), (req, res) => 
   res.json({ message: 'Article deleted successfully' });
 });
 
+// Admin Categories CRUD (RBAC Applied)
+adminRoutes.post('/categories', authorizeRole([ROLES.ADMIN]), (req, res) => {
+  const { title } = req.body;
+  if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
+  const normalizedTitle = title.trim();
+
+  // Case-insensitive uniqueness check
+  const existing = db.prepare('SELECT id FROM categories WHERE title = ? COLLATE NOCASE').get(normalizedTitle);
+  if (existing) return res.status(409).json({ error: 'Category already exists' });
+
+  // Get max order index
+  const lastIndex = db.prepare('SELECT MAX(order_index) as max_idx FROM categories').get();
+  const nextIndex = (lastIndex.max_idx || 0) + 1;
+
+  const stmt = db.prepare('INSERT INTO categories (title, order_index) VALUES (?, ?)');
+  const info = stmt.run(normalizedTitle, nextIndex);
+  
+  logAdminAction(db, req.user.email, 'CREATE_CATEGORY', { id: info.lastInsertRowid, title: normalizedTitle }, req.ip);
+  const newCat = db.prepare('SELECT * FROM categories WHERE id = ?').get(info.lastInsertRowid);
+  res.status(201).json(newCat);
+});
+
+adminRoutes.delete('/categories/:id', authorizeRole([ROLES.ADMIN]), (req, res) => {
+  const { id } = req.params;
+  const { reassignToTitle } = req.query; // e.g., ?reassignToTitle=General
+
+  const categoryToDelete = db.prepare('SELECT * FROM categories WHERE id = ?').get(id);
+  if (!categoryToDelete) return res.status(404).json({ error: 'Category not found' });
+
+  // Check for linked articles using string match since articles.category is TEXT
+  const linkedArticles = db.prepare('SELECT count(*) as count FROM articles WHERE category = ?').get(categoryToDelete.title);
+
+  if (linkedArticles.count > 0) {
+    if (!reassignToTitle) {
+      return res.status(409).json({ error: 'This category has associated articles', count: linkedArticles.count });
+    }
+    // Reassign logic
+    const updateStmt = db.prepare('UPDATE articles SET category = ?, updated_at = CURRENT_TIMESTAMP WHERE category = ?');
+    updateStmt.run(reassignToTitle, categoryToDelete.title);
+    logAdminAction(db, req.user.email, 'REASSIGN_ARTICLES', { from: categoryToDelete.title, to: reassignToTitle, count: linkedArticles.count }, req.ip);
+  }
+
+  const stmt = db.prepare('DELETE FROM categories WHERE id = ?');
+  stmt.run(id);
+  
+  logAdminAction(db, req.user.email, 'DELETE_CATEGORY', { id, title: categoryToDelete.title }, req.ip);
+  res.json({ message: 'Category deleted successfully' });
+});
+
 // Admin Popular Topics CRUD (RBAC Applied)
 adminRoutes.get('/popular-topics', authorizeRole([ROLES.ADMIN, ROLES.SUPPORT, ROLES.VIEWER]), (req, res) => {
   const topics = db.prepare('SELECT * FROM popular_topics ORDER BY order_index ASC').all();

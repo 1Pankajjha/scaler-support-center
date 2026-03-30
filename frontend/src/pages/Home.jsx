@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MessageCircle, Mail, BookOpen, CreditCard, Award, User, Users, Briefcase, AlertCircle, CheckCircle, ArrowRight, ArrowLeft, ChevronRight, ThumbsUp, ThumbsDown, Clock } from 'lucide-react';
+import { Search, MessageCircle, Mail, BookOpen, CreditCard, Award, User, Users, Briefcase, Monitor, AlertCircle, CheckCircle, ArrowRight, ArrowLeft, ChevronRight, ThumbsUp, ThumbsDown, Clock } from 'lucide-react';
 import '../styles/Home.css';
 import Footer from '../components/Footer';
 import getApiBaseUrl from '../utils/apiConfig';
@@ -8,6 +8,7 @@ const Home = () => {
   const [chatMessages, setChatMessages] = useState([{ role: 'assistant', content: 'Hello! I am the Scaler AI assistant. How can I help you today?' }]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [dbCategories, setDbCategories] = useState([]);
   const [viewArticle, setViewArticle] = useState(null);
   const [viewCategory, setViewCategory] = useState(null);
   const [categoryCounts, setCategoryCounts] = useState({});
@@ -295,25 +296,28 @@ const Home = () => {
         // Get the API base URL
         const API_BASE_URL = getApiBaseUrl();
         
-        // Fetch articles and popular topics in parallel
-        const [articlesRes, topicsRes] = await Promise.all([
+        // Fetch articles, popular topics, and categories in parallel
+        const [articlesRes, topicsRes, categoriesRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/articles`),
-          fetch(`${API_BASE_URL}/api/popular-topics`)
+          fetch(`${API_BASE_URL}/api/popular-topics`),
+          fetch(`${API_BASE_URL}/api/categories`)
         ]);
         
         console.log('Articles response status:', articlesRes.status);
         console.log('Topics response status:', topicsRes.status);
         
-        if (!articlesRes.ok || !topicsRes.ok) {
+        if (!articlesRes.ok || !topicsRes.ok || !categoriesRes.ok) {
           console.error('API Response errors:', {
             articles: await articlesRes.text(),
-            topics: await topicsRes.text()
+            topics: await topicsRes.text(),
+            categories: await categoriesRes.text()
           });
-          throw new Error(`Failed to fetch data. Articles: ${articlesRes.status}, Topics: ${topicsRes.status}`);
+          throw new Error(`Failed to fetch data.`);
         }
         
         const articlesData = await articlesRes.json();
         const topicsData = await topicsRes.json();
+        const categoriesData = await categoriesRes.json();
         
         // Process articles
         const published = articlesData.filter(a => a.status === 'published');
@@ -325,6 +329,7 @@ const Home = () => {
         
         // Set popular topics
         setPopularTopics(topicsData);
+        setDbCategories(categoriesData);
         
       } catch (err) {
         console.error('Failed to fetch data:', err);
@@ -367,26 +372,55 @@ const Home = () => {
     return colors[title] || { iconColor: '#6B7280', bgColor: 'from-gray-50 to-gray-100' };
   };
 
-  const predefinedTopics = [
-    { id: 'Course & Curriculum', icon: <BookOpen />, title: "Course & Curriculum", desc: "Syllabus, modules, schedule, content queries" },
-    { id: 'Billing & Payments', icon: <CreditCard />, title: "Billing & Payments", desc: "EMI, refunds, invoices, payment issues" },
-    { id: 'Certificates', icon: <Award />, title: "Certificates", desc: "Completion certificates, downloads" },
-    { id: 'Account & Login', icon: <User />, title: "Account & Login", desc: "Password reset, profile, access issues" },
-    { id: 'Mentorship', icon: <Users />, title: "Mentorship", desc: "Mentor sessions, scheduling, feedback" },
-    { id: 'Placements', icon: <Briefcase />, title: "Placements", desc: "Job referrals, mock interviews, career support" }
-  ];
-
-  const formatDate = (dateString) => {
-    const options = { month: 'short', day: 'numeric', year: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+  const getCategoryIcon = (title) => {
+    const icons = {
+      'Course & Curriculum': <BookOpen />,
+      'Billing & Payments': <CreditCard />,
+      'Certificates': <Award />,
+      'Account & Login': <User />,
+      'Mentorship': <Users />,
+      'Placements': <Briefcase />,
+      'Course Curriculum': <BookOpen />,
+      'Payments & EMI': <CreditCard />,
+      'Career & Placements': <Briefcase />,
+      'Platform & Tech': <Monitor />
+    };
+    return icons[title] || <BookOpen />;
   };
 
-  let topics = predefinedTopics.map(t => ({ ...t, count: categoryCounts[t.id] || 0 }));
-  Object.keys(categoryCounts).forEach(cat => {
-    if (!topics.find(t => t.title === cat)) {
-      topics.push({ icon: <BookOpen />, title: cat, desc: `Explore articles in ${cat}`, count: categoryCounts[cat] || 0 });
-    }
-  });
+  const getCategoryDesc = (cat) => {
+    if (cat.description) return cat.description;
+    const descs = {
+      'Course & Curriculum': "Syllabus, modules, schedule, content queries",
+      'Billing & Payments': "EMI, refunds, invoices, payment issues",
+      'Certificates': "Completion certificates, downloads",
+      'Account & Login': "Password reset, profile, access issues",
+      'Mentorship': "Mentor sessions, scheduling, feedback",
+      'Placements': "Job referrals, mock interviews, career support"
+    };
+    return descs[cat.title] || `Explore articles in ${cat.title}`;
+  };
+
+  let topics = dbCategories.map(cat => ({
+    id: cat.title,
+    title: cat.title,
+    desc: getCategoryDesc(cat),
+    icon: getCategoryIcon(cat.title),
+    count: categoryCounts[cat.title] || 0
+  }));
+
+  // Fallback to predefined if no categories in DB (for safety)
+  if (topics.length === 0) {
+    const predefinedTopics = [
+      { id: 'Course & Curriculum', icon: <BookOpen />, title: "Course & Curriculum", desc: "Syllabus, modules, schedule, content queries" },
+      { id: 'Billing & Payments', icon: <CreditCard />, title: "Billing & Payments", desc: "EMI, refunds, invoices, payment issues" },
+      { id: 'Certificates', icon: <Award />, title: "Certificates", desc: "Completion certificates, downloads" },
+      { id: 'Account & Login', icon: <User />, title: "Account & Login", desc: "Password reset, profile, access issues" },
+      { id: 'Mentorship', icon: <Users />, title: "Mentorship", desc: "Mentor sessions, scheduling, feedback" },
+      { id: 'Placements', icon: <Briefcase />, title: "Placements", desc: "Job referrals, mock interviews, career support" }
+    ];
+    topics = predefinedTopics.map(t => ({ ...t, count: categoryCounts[t.id] || 0 }));
+  }
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;

@@ -28,6 +28,7 @@ const AdminDashboard = () => {
   const [insights, setInsights] = useState(null);
   const [popularTopics, setPopularTopics] = useState([]);
   const [originalTopics, setOriginalTopics] = useState([]);
+  const [categories, setCategories] = useState([]);
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,6 +54,14 @@ const AdminDashboard = () => {
   const [topicSaveError, setTopicSaveError] = useState(null);
   const [topicSaveSuccess, setTopicSaveSuccess] = useState(null);
 
+  // Category Management Modal States
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [newCatTitle, setNewCatTitle] = useState('');
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [categorySaveError, setCategorySaveError] = useState(null);
+  const [categorySaveSuccess, setCategorySaveSuccess] = useState(null);
+  const [categoryReassignTarget, setCategoryReassignTarget] = useState('');
+
   useEffect(() => {
     let unmounted = false;
 
@@ -75,6 +84,7 @@ const AdminDashboard = () => {
         
         if (!unmounted) {
           setIsAuthLoading(false);
+          fetchCategories();
           fetchArticles();
           fetchInsights();
           fetchPopularTopics();
@@ -143,6 +153,73 @@ const AdminDashboard = () => {
       console.error('Error:', e);
       console.error('Error message:', e.message);
       console.error('Stack trace:', e.stack);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch(`${API_URL}/categories`);
+      if (res.ok) {
+        setCategories(await res.json());
+      }
+    } catch (e) {
+      console.error('Failed to fetch categories:', e);
+    }
+  };
+
+  const handleAddCategory = async (e) => {
+    e.preventDefault();
+    setCategorySaveError(null);
+    setCategorySaveSuccess(null);
+    if (!newCatTitle.trim()) return;
+
+    setIsSavingCategory(true);
+    try {
+      const res = await fetchWithAuth(`${API_URL}/admin/categories`, {
+        method: 'POST',
+        body: JSON.stringify({ title: newCatTitle })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setCategorySaveSuccess('Category added successfully!');
+      setNewCatTitle('');
+      fetchCategories();
+      // Auto clear success msg after 2s
+      setTimeout(() => setCategorySaveSuccess(null), 2000);
+    } catch (e) {
+      setCategorySaveError(e.message);
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id, title) => {
+    setCategorySaveError(null);
+    setCategorySaveSuccess(null);
+
+    // Validate if reassign target is selected if needed - but that will be caught by server if we don't send it.
+    try {
+      let url = `${API_URL}/admin/categories/${id}`;
+      if (categoryReassignTarget) url += `?reassignToTitle=${encodeURIComponent(categoryReassignTarget)}`;
+
+      const res = await fetchWithAuth(url, { method: 'DELETE' });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        // Fallback for 409 conflict
+        if (res.status === 409) {
+          setCategorySaveError(`Conflict: ${errorData.count} associated articles found. Select a reassignment category.`);
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to delete');
+      }
+
+      setCategorySaveSuccess('Category deleted successfully!');
+      setCategoryReassignTarget('');
+      fetchCategories();
+      fetchArticles(); // Refresh articles in case they were reassigned
+      setTimeout(() => setCategorySaveSuccess(null), 2000);
+    } catch (e) {
+      setCategorySaveError(e.message);
     }
   };
 
@@ -413,7 +490,9 @@ const AdminDashboard = () => {
     setHasUnsavedChanges(false);
   };
 
-  const uniqueCategories = ['All', ...new Set(articles.map(a => a.category))];
+  const dbCategoryTitles = categories.map(c => c.title);
+  const articleCategories = [...new Set(articles.map(a => a.category))];
+  const uniqueCategories = ['All', ...new Set([...dbCategoryTitles, ...articleCategories])];
   
   const filteredArticles = articles.filter(a => {
     const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -799,10 +878,25 @@ const AdminDashboard = () => {
               <div className="form-row">
                 <div className="form-group">
                   <label>Category</label>
-                  <input required type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} placeholder="e.g., Billing & Payments" list="cat-suggestions" />
-                  <datalist id="cat-suggestions">
-                    {uniqueCategories.filter(c => c !== 'All').map(c => <option key={c} value={c} />)}
-                  </datalist>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select 
+                      required 
+                      value={formData.category} 
+                      onChange={e => setFormData({...formData, category: e.target.value})} 
+                      className="category-select"
+                      style={{ flex: 1, padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}
+                    >
+                      <option value="" disabled>Select a category</option>
+                      {categories.map(c => <option key={c.id} value={c.title}>{c.title}</option>)}
+                    </select>
+                    <button 
+                      type="button" 
+                      onClick={() => setIsCategoryModalOpen(true)}
+                      style={{ padding: '0 1rem', backgroundColor: '#e2e8f0', color: '#1e293b', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}
+                    >
+                      Manage
+                    </button>
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>Visibility Status</label>
@@ -916,6 +1010,69 @@ const AdminDashboard = () => {
                 </div>
               )}
             </form>
+          </div>
+        </div>
+      )}
+
+      {isCategoryModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsCategoryModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%' }}>
+            <div className="modal-header">
+              <h2>Manage Categories</h2>
+              <button className="close-btn" onClick={() => setIsCategoryModalOpen(false)}>✕</button>
+            </div>
+            
+            <div className="categories-sandbox" style={{ padding: '20px' }}>
+              <form onSubmit={handleAddCategory} style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
+                <input 
+                  type="text" 
+                  placeholder="Create new category name..." 
+                  value={newCatTitle} 
+                  onChange={(e) => setNewCatTitle(e.target.value)}
+                  style={{ flex: 1, padding: '10px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                />
+                <button type="submit" className="save-btn" disabled={isSavingCategory} style={{ padding: '0 15px' }}>
+                  {isSavingCategory ? 'Adding...' : 'Add'}
+                </button>
+              </form>
+
+              <div className="existing-categories" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h3 style={{ fontSize: '1rem', color: '#64748b', marginBottom: '5px' }}>Existing Categories</h3>
+                {categories.length === 0 ? (
+                  <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No categories found. Create one above.</p>
+                ) : (
+                  categories.map(cat => (
+                    <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '12px 15px', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
+                      <span style={{ fontWeight: 500, color: '#1e293b' }}>{cat.title}</span>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        {/* Optional target re-assignment inline dropdown triggered if delete hits 409 conflict */}
+                        <select 
+                          value={categoryReassignTarget} 
+                          onChange={(e) => setCategoryReassignTarget(e.target.value)}
+                          style={{ fontSize: '0.75rem', padding: '4px 8px', borderColor: '#e2e8f0', color: '#64748b' }}
+                        >
+                          <option value="">-- Reassign Orphaned --</option>
+                          {categories.filter(c => c.id !== cat.id).map(c => <option key={c.id} value={c.title}>{c.title}</option>)}
+                        </select>
+                        <button 
+                          onClick={() => window.confirm(`Permanently delete "${cat.title}"?`) && handleDeleteCategory(cat.id, cat.title)}
+                          style={{ color: '#ef4444', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {categorySaveSuccess && (
+                <div style={{ color: '#16a34a', marginTop: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>✓ {categorySaveSuccess}</div>
+              )}
+              {categorySaveError && (
+                <div style={{ color: '#dc2626', marginTop: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>✗ {categorySaveError}</div>
+              )}
+            </div>
           </div>
         </div>
       )}
