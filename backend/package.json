@@ -8,6 +8,11 @@
     "dev": "node server.js"
   },
   "dependencies": {
+    "@opentelemetry/auto-instrumentations-node": "^0.72.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.214.0",
+    "@opentelemetry/sdk-node": "^0.214.0",
+    "@sentry/node": "^10.46.0",
+    "@sentry/profiling-node": "^10.46.0",
     "better-sqlite3": "^12.8.0",
     "connect-sqlite3": "^0.9.16",
     "cookie-parser": "^1.4.7",
@@ -21,6 +26,8 @@
     "jsonwebtoken": "^9.0.3",
     "openai": "^6.32.0",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "passport-google-oauth20": "^2.0.0",
+    "uuid": "^13.0.0",
+    "winston": "^3.19.0"
   }
 }

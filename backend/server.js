@@ -1,4 +1,21 @@
+require('./utils/otel');
 require('dotenv').config();
+const Sentry = require('@sentry/node');
+const { nodeProfilingIntegration } = require('@sentry/profiling-node');
+
+// --- SENTRY INITIALIZATION (Must be at the very top) ---
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    integrations: [
+      nodeProfilingIntegration(),
+    ],
+    tracesSampleRate: 1.0,
+    profilesSampleRate: 1.0,
+    environment: process.env.NODE_ENV || 'development'
+  });
+}
+
 const { OpenAI } = require('openai');
 const express = require('express');
 const cors = require('cors');
@@ -15,9 +32,18 @@ const {
   logAdminAction,
   ROLES
 } = require('./auth');
+const { logger, requestLogger } = require('./utils/logger');
 
 const app = express();
 const port = process.env.PORT || 5001;
+
+// The request handler must be the first middleware on the app
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.requestHandler());
+}
+
+// Attach request logger for structured records 
+app.use(requestLogger);
 
 console.log('🚀 BE SERVER STARTING...');
 console.log(`📡 PORT assigned: ${port}`);
@@ -153,14 +179,30 @@ console.log(`📦 ARTICLES: ${articleInventory.count}`);
 console.log(`📂 CATEGORIES: ${categoryInventory.count}`);
 console.log('-------------------------------------');
 
-// --- HEALTH CHECK API ---
+// --- HEALTH CHECK API (Enhanced with DB check) ---
 app.get('/api/health', (req, res) => {
-  console.log('💚 Health check hit: /api/health');
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
+  try {
+    // Perform a dummy DB operation to verify connection health
+    const dbTest = db.prepare('SELECT 1').get();
+    
+    if (dbTest) {
+      res.json({ 
+        status: 'UP', 
+        components: {
+          database: { status: 'UP', engine: 'better-sqlite3' }
+        },
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      });
+    }
+  } catch (error) {
+    logger.error('CRITICAL: Health check failure', { error: error.message });
+    res.status(503).json({ 
+      status: 'DOWN', 
+      error: 'Database connection failed',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Explicit endpoint that Railway checks sometimes (public articles)
@@ -474,6 +516,11 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // --- START SERVER ---
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+// The error handler must be before any other error middleware and after all controllers
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.errorHandler());
+}
+
+app.listen(port, '0.0.0.0', () => {
+  logger.info(`SERVER_READY`, { port, mode: process.env.NODE_ENV || 'development' });
 });
