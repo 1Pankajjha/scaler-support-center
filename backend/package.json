@@ -8,6 +8,7 @@
     "dev": "node server.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@opentelemetry/auto-instrumentations-node": "*",
     "@opentelemetry/exporter-trace-otlp-http": "*",
     "@opentelemetry/sdk-node": "*",
