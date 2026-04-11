@@ -1399,7 +1399,7 @@ async function generateAIResponse(message, conversationId) {
   try {
     // Check for Gemini API key first
     if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
-      const model = gemini.getGenerativeModel({ model: 'gemini-pro' });
+      const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
       
       // Get conversation context
       const conversation = conversationManager.getConversation(conversationId, true);

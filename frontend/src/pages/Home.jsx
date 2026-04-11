@@ -5,9 +5,10 @@ import Footer from '../components/Footer';
 import getApiBaseUrl from '../utils/apiConfig';
 const Home = () => {
   const [showModal, setShowModal] = useState(false);
-  const [chatMessages, setChatMessages] = useState([{ role: 'assistant', content: 'Hello! I am the Scaler AI assistant. How can I help you today?' }]);
+  const [chatMessages, setChatMessages] = useState([{ role: 'assistant', content: 'Hello! I\'m Dev, your Scaler AI assistant powered by Gemini. How can I help you today?' }]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [chatConversationId, setChatConversationId] = useState(null);
   const [dbCategories, setDbCategories] = useState([]);
   const [viewArticle, setViewArticle] = useState(null);
   const [viewCategory, setViewCategory] = useState(null);
@@ -73,6 +74,10 @@ const Home = () => {
 
   const openChatModal = () => {
     chatTriggerRef.current = document.activeElement;
+    // Reset for a fresh conversation
+    setChatMessages([{ role: 'assistant', content: 'Hello! I\'m Dev, your Scaler AI assistant powered by Gemini. How can I help you today?' }]);
+    setChatConversationId(null);
+    setChatInput('');
     setShowModal(true);
   };
 
@@ -440,24 +445,36 @@ const Home = () => {
     const userMsg = { role: 'user', content: chatInput };
     const newMessages = [...chatMessages, userMsg];
     setChatMessages(newMessages);
+    const currentInput = chatInput;
     setChatInput('');
     setIsTyping(true);
 
     try {
-      // Use the same API base URL configuration
       const API_BASE_URL = getApiBaseUrl();
       
-      const res = await fetch(`${API_BASE_URL}/api/chat`, {
+      // Use /api/chat/start for first message, /api/chat/continue for subsequent
+      const isFirstMessage = !chatConversationId;
+      const endpoint = isFirstMessage ? '/api/chat/start' : '/api/chat/continue';
+      
+      const payload = isFirstMessage
+        ? { message: currentInput, userName: 'Visitor', userEmail: null }
+        : { message: currentInput, conversationId: chatConversationId };
+      
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       
       if (res.ok) {
+        // Store the conversation ID for subsequent messages
+        if (data.conversationId) {
+          setChatConversationId(data.conversationId);
+        }
         setChatMessages([...newMessages, { role: 'assistant', content: data.reply }]);
       } else {
-        setChatMessages([...newMessages, { role: 'assistant', content: `API Logic Error: ${data.error}` }]);
+        setChatMessages([...newMessages, { role: 'assistant', content: `Error: ${data.error || 'Something went wrong'}` }]);
       }
     } catch (err) {
       setChatMessages([...newMessages, { role: 'assistant', content: 'Connection failed. Please ensure the backend server is running correctly.' }]);
@@ -690,7 +707,7 @@ const Home = () => {
             }}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Chat Support</h3>
-            <p style={{marginBottom: '1rem', color: '#64748b'}}>Powered by OpenAI Contextual Logic.</p>
+            <p style={{marginBottom: '1rem', color: '#64748b'}}>Powered by Gemini AI ✨</p>
             <div className="chat-interface">
               <div className="chat-messages">
                 {chatMessages.map((msg, idx) => (
